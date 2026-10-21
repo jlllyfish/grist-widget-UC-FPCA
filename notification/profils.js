@@ -170,6 +170,9 @@ globalThis.FPCA = globalThis.FPCA || {};
     return `hors périmètre (${[type, mode].filter(Boolean).join(" / ") || "type non renseigné"})`;
   }
 
+  // Notification complétée = décision renseignée
+  const estComplete = (rec) => !!texte(lire(rec, "decision")).trim();
+
   const listeLignes = (rec, profil) => lignesDe(lire(rec, profil.liste.champ)).map(profil.liste.format);
 
   function annee(v) {
@@ -186,5 +189,5 @@ globalThis.FPCA = globalThis.FPCA || {};
     return `${nomSur(parties.join("-")) || "dossier"}.pdf`;
   }
 
-  globalThis.FPCA.notif = { COLUMN_MAP, PROFILS, lire, profilDe, motifHorsPerimetre, listeLignes, lignesDe, nomFichier };
+  globalThis.FPCA.notif = { COLUMN_MAP, PROFILS, lire, profilDe, motifHorsPerimetre, estComplete, listeLignes, lignesDe, nomFichier };
 })();

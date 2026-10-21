@@ -4,7 +4,7 @@
   const $ = (id) => document.getElementById(id);
   const el = (tag, props = {}) => Object.assign(document.createElement(tag), props);
   const { formatDate, texte, versBlob, telecharger } = FPCA.pdf;
-  const { COLUMN_MAP, PROFILS, lire, profilDe, motifHorsPerimetre, listeLignes, nomFichier, construireDocument } = FPCA.notif;
+  const { COLUMN_MAP, PROFILS, lire, profilDe, motifHorsPerimetre, estComplete, listeLignes, nomFichier, construireDocument } = FPCA.notif;
 
   // ── Version ──
   const VERSION = document.querySelector('meta[name="fpca-version"]')?.content || "?";
@@ -153,6 +153,10 @@
     const p = courant ? profil(courant) : null;
     $("badge-profil").textContent = p?.nom || "";
     $("badge-profil").hidden = !p;
+    const fait = !!courant && estComplete(courant);
+    $("badge-etat").textContent = fait ? "Complétée" : "À traiter";
+    $("badge-etat").className = `fr-badge fr-badge--sm fr-badge--no-icon ${fait ? "fr-badge--success" : "fr-badge--new"}`;
+    $("badge-etat").hidden = !courant;
     if (!courant) return;
     const t = (c) => texte(lire(courant, c));
     const d = (c) => formatDate(lire(courant, c));
@@ -329,13 +333,16 @@
   // ════════════════════════════════════════════════════════════════
   // Navigation et filtres
   // ════════════════════════════════════════════════════════════════
-  const libelle = (rec) =>
-    [lire(rec, "dossier_number"), lire(rec, "organisme"), lire(rec, "site"), lire(rec, "diplome")]
-      .map((v) => texte(v)).filter(Boolean).join(" — ") || `Ligne ${rec.id}`;
+  // ✓ devant les notifications complétées (décision renseignée)
+  const libelle = (rec) => (estComplete(rec) ? "\u2713 " : "") +
+    ([lire(rec, "dossier_number"), lire(rec, "organisme"), lire(rec, "site"), lire(rec, "diplome")]
+      .map((v) => texte(v)).filter(Boolean).join(" — ") || `Ligne ${rec.id}`);
+  const ETATS = { oui: "Complétées", non: "À traiter" };
 
   // ── Filtres croisés : chaque menu ne propose que les valeurs compatibles avec les autres filtres ──
   const VIDE = "∅";   // valeur des dossiers où le champ n'est pas renseigné
   const FACETTES = [
+    { champ: "etat", id: "filtre-etat", tous: "Toutes notifications", valeur: (rec) => ETATS[estComplete(rec) ? "oui" : "non"] },
     { champ: "type", id: "filtre-type", tous: "Tous types", valeur: (rec) => profil(rec)?.nom },
     { champ: "departement", id: "filtre-departement", tous: "Tous départements" },
     { champ: "organisme", id: "filtre-organisme", tous: "Tous organismes" },
@@ -407,7 +414,9 @@
     return details.join(" · ");
   }
 
-  function majListe() {
+  // garder : rafraîchissement des données (ex. après une saisie) → le dossier affiché reste affiché,
+  // même s'il ne correspond plus aux filtres (ex. décision saisie avec le filtre « À traiter »).
+  function majListe({ garder = false } = {}) {
     const mots = norm($("recherche").value).split(/\s+/).filter(Boolean);
     majFacettes(mots);
     liste = tous.filter((r) => correspond(r, mots) && passe(r, null));
@@ -422,8 +431,10 @@
     else $("sel-dossier").add(new Option(message, ""));
     // Garde le dossier affiché s'il est toujours dans la liste, sinon prend le premier
     const i = courant ? liste.findIndex((r) => r.id === courant.id) : -1;
+    const encore = courant && tous.find((r) => r.id === courant.id);
     if (i >= 0) courant = liste[i];
-    else courant = liste[0] || (filtre ? (courant && tous.find((r) => r.id === courant.id)) || null : null);
+    else if (garder && encore) courant = encore;
+    else courant = liste[0] || (filtre ? encore || null : null);
     majNav();
     afficher();
     memoriser();
@@ -438,10 +449,20 @@
   function majNav() {
     const n = liste.length;
     const i = courant ? liste.findIndex((r) => r.id === courant.id) : -1;
-    if (i >= 0) $("sel-dossier").value = String(i);
+    const sel = $("sel-dossier");
+    sel.querySelector("option.hors-filtres")?.remove();
+    if (i >= 0) sel.value = String(i);
+    else if (courant && n) {
+      // Dossier affiché qui ne correspond plus aux filtres (ex. décision saisie avec « À traiter »)
+      const o = new Option(`${libelle(courant)} — hors filtres`, "", true, true);
+      o.className = "hors-filtres";
+      o.disabled = true;
+      sel.prepend(o);
+      sel.value = "";
+    }
     $("nav-counter").textContent = n ? `${i >= 0 ? i + 1 : "—"} / ${n}` : "— / —";
     $("btn-prec").disabled = i <= 0;
-    $("btn-suiv").disabled = i < 0 || i >= n - 1;
+    $("btn-suiv").disabled = !n || i >= n - 1;   // hors filtres (i = -1) : ▶ mène au premier dossier de la liste
     $("btn-pdf").disabled = !courant;
     $("btn-all").disabled = !n;
     $("btn-all").textContent = n ? `ZIP (${n})` : "ZIP";
@@ -464,8 +485,8 @@
   $("btn-prec").addEventListener("click", () => aller(indexCourant() - 1));
   $("btn-suiv").addEventListener("click", () => aller(indexCourant() + 1));
   $("sel-dossier").addEventListener("change", (e) => aller(Number(e.target.value)));
-  $("recherche").addEventListener("input", majListe);
-  FACETTES.forEach((f) => $(f.id).addEventListener("change", majListe));
+  $("recherche").addEventListener("input", () => majListe());
+  FACETTES.forEach((f) => $(f.id).addEventListener("change", () => majListe()));
   $("btn-reinit").addEventListener("click", reinitialiser);
   $("recherche").addEventListener("keydown", (e) => {
     if (e.key === "Enter" && liste.length) aller(0);
@@ -501,7 +522,7 @@
     });
     tous = r.lignes.filter(estDossierValide);
     horsPerimetre = r.lignes.filter((x) => !estDossierValide(x));
-    majListe();
+    majListe({ garder: true });
     if (idGristEnAttente !== null) {
       const i = lie() ? liste.findIndex((x) => x.id === idGristEnAttente) : -1;
       idGristEnAttente = null;

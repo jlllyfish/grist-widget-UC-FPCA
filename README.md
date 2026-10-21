@@ -4,7 +4,7 @@ Widgets personnalisés Grist qui génèrent les notifications officielles de l'u
 
 | Widget | URL à coller dans Grist (« Widget personnalisé » → « URL ») |
 |---|---|
-| Tous types (UC + CCF) | `https://jlllyfish.github.io/grist-widget-UC-FPCA/notification/?v=0.5.1` |
+| Tous types (UC + CCF) | `https://jlllyfish.github.io/grist-widget-UC-FPCA/notification/?v=0.5.2` |
 | Actualisation UC seule | `https://jlllyfish.github.io/grist-widget-UC-FPCA/notification/?profil=uc&v=0.5.0` |
 | Actualisation CCF seule | `https://jlllyfish.github.io/grist-widget-UC-FPCA/notification/?profil=ccf&v=0.5.0` |
 
@@ -42,6 +42,7 @@ La version s'affiche en bas à droite du widget et dans la console du navigateur
 
 ## Historique
 
+- **0.5.2** — Filtre « Toutes notifications / À traiter / Complétées » (complétée = décision renseignée), ✓ devant les dossiers complétés dans la liste, badge d'état dans le formulaire. Un dossier qui sort des filtres après une saisie reste affiché jusqu'au changement de dossier.
 - **0.5.1** — Formulaire et aperçu à 50 / 50 par défaut, séparateur déplaçable à la souris (ou aux flèches du clavier), largeur mémorisée ; double-clic pour revenir à 50 / 50.
 - **0.5.0** — Widget unique pour tous les types de dossiers, organisé en profils : Actualisation UC et Actualisation CCF (grille CCF à 6 pièces, dont « Adaptation des horaires », liste des modules modifiable). Le profil est choisi automatiquement selon le dossier ; filtre « Type » ; paramètre `?profil=` pour restreindre. Pied de page et titres CCF corrigés. Colonnes introuvables signalées.
 - **0.4.1** — Recherche sans résultat expliquée : « dossier d'habilitation » (Habilitation complète), « dossier évaluation CCF » (Contrôle en Cours de Formation), autre type hors périmètre, dossier masqué par les filtres, ou « Aucun dossier ne correspond ».

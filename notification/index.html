@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <!-- Version du widget : la changer ICI et dans tous les ?v= de cette page à chaque publication -->
-    <meta name="fpca-version" content="0.5.1" />
+    <meta name="fpca-version" content="0.5.2" />
     <!-- Politique de sécurité du contenu : seul le code de ce dépôt et l'API Grist sont autorisés.
          'unsafe-eval' est imposé par grist-plugin-api.js (paquet webpack qui exécute ses modules via eval).
          frame-src / object-src blob: : aperçu du PDF généré dans le navigateur. -->
@@ -15,18 +15,18 @@
     <title>Notifications FPCA</title>
     <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
     <!-- Bibliothèques embarquées (versions figées, voir vendor/README.md) -->
-    <script src="../vendor/pdfmake.min.js?v=0.5.1"></script>
-    <script src="../vendor/jszip.min.js?v=0.5.1"></script>
-    <script src="../vendor/marianne.js?v=0.5.1"></script>
+    <script src="../vendor/pdfmake.min.js?v=0.5.2"></script>
+    <script src="../vendor/jszip.min.js?v=0.5.2"></script>
+    <script src="../vendor/marianne.js?v=0.5.2"></script>
     <!-- Socle commun aux widgets FPCA -->
-    <script src="../commun/logo.js?v=0.5.1"></script>
-    <script src="../commun/pdf.js?v=0.5.1"></script>
-    <script src="../commun/grist.js?v=0.5.1"></script>
+    <script src="../commun/logo.js?v=0.5.2"></script>
+    <script src="../commun/pdf.js?v=0.5.2"></script>
+    <script src="../commun/grist.js?v=0.5.2"></script>
     <!-- Widget -->
-    <script src="profils.js?v=0.5.1"></script>
-    <script src="document.js?v=0.5.1"></script>
-    <link rel="stylesheet" href="../vendor/dsfr/dsfr.min.css?v=0.5.1" />
-    <link rel="stylesheet" href="../vendor/dsfr/icones.css?v=0.5.1" />
+    <script src="profils.js?v=0.5.2"></script>
+    <script src="document.js?v=0.5.2"></script>
+    <link rel="stylesheet" href="../vendor/dsfr/dsfr.min.css?v=0.5.2" />
+    <link rel="stylesheet" href="../vendor/dsfr/icones.css?v=0.5.2" />
     <style>
       html, body { height: 100%; }
       body { display: flex; flex-direction: column; background: #f6f6f6; color: #161616; overflow: hidden; }
@@ -128,6 +128,7 @@
           <input id="recherche" class="fr-input" type="search" placeholder="Rechercher un dossier"
                  title="N° de dossier, organisme, site, diplôme ou département" aria-label="Rechercher un dossier" />
         </div>
+        <select id="filtre-etat" class="filtre fr-select" aria-label="Filtrer par état de la notification"></select>
         <select id="filtre-type" class="filtre fr-select" aria-label="Filtrer par type de dossier"></select>
         <select id="filtre-departement" class="filtre fr-select" aria-label="Filtrer par département"></select>
         <select id="filtre-organisme" class="filtre fr-select" aria-label="Filtrer par organisme"></select>
@@ -146,7 +147,7 @@
     <div class="corps vue-saisie" id="corps">
       <!-- Formulaire : la grille est générée par app.js à partir de GRILLE (document.js) -->
       <section class="saisie" id="zone-saisie" aria-label="Saisie">
-        <h2>Dossier <span class="fr-badge fr-badge--sm fr-badge--info" id="badge-profil" hidden></span></h2>
+        <h2>Dossier <span class="fr-badge fr-badge--sm fr-badge--info" id="badge-profil" hidden></span><span id="badge-etat" hidden></span></h2>
         <dl class="dossier" id="resume-dossier"></dl>
         <ul class="ucare" id="resume-liste"></ul>
         <div id="form-liste"></div>
@@ -182,6 +183,6 @@
       <span id="version"></span>
     </footer>
 
-    <script src="app.js?v=0.5.1"></script>
+    <script src="app.js?v=0.5.2"></script>
   </body>
 </html>
