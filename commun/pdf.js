@@ -63,7 +63,7 @@ globalThis.FPCA = globalThis.FPCA || {};
     const hauteur = 90 * PX;
     return {
       columns: [
-        { width: hauteur * (globalThis.FPCA.LOGO_RATIO || 1.39), image: globalThis.FPCA.LOGO, fit: [65 * PT, hauteur] },
+        { width: hauteur * globalThis.FPCA.LOGO_RATIO, svg: globalThis.FPCA.LOGO_SVG, fit: [65 * PT, hauteur] },
         { width: "*", alignment: "right", fontSize: tailleTexte, lineHeight: 1.4, margin: [0, 6, 9, 0],
           text: lignes.flatMap((l, i) => [i ? "\n" : "", typeof l === "string" ? { text: l } : l]) },
       ],
