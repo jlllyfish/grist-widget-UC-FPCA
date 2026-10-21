@@ -1,16 +1,25 @@
-// Actualisation UC — navigation, saisie enregistrée dans Grist, aperçu du PDF et téléchargements.
-// La composition du PDF est dans document.js, le socle pdfmake dans ../commun/pdf.js.
+// Notifications FPCA — navigation, saisie enregistrée dans Grist, aperçu du PDF et téléchargements.
+// Profils (UC, CCF…) : profils.js. Composition du PDF : document.js. Socle pdfmake : ../commun/pdf.js.
 (function () {
   const $ = (id) => document.getElementById(id);
+  const el = (tag, props = {}) => Object.assign(document.createElement(tag), props);
   const { formatDate, texte, versBlob, telecharger } = FPCA.pdf;
-  const { COLUMN_MAP, lire, estDossierValide, motifHorsPerimetre, ucareLignes, nomFichier, GRILLE, EDITABLES, FILTRES } = FPCA.actuUC;
-  const construire = FPCA.actuUC.construireDocument;
+  const { COLUMN_MAP, PROFILS, lire, profilDe, motifHorsPerimetre, listeLignes, nomFichier, construireDocument } = FPCA.notif;
 
   // ── Version ──
   const VERSION = document.querySelector('meta[name="fpca-version"]')?.content || "?";
   $("version").textContent = `version ${VERSION} · PDF vectoriel`;
-  console.log(`[Actualisation UC] version ${VERSION} chargée`);
+  console.log(`[Notifications FPCA] version ${VERSION} chargée`);
   $("date-jour").textContent = new Date().toLocaleDateString("fr-FR");
+
+  // ── Profils actifs : tous, ou ceux de l'URL (?profil=ccf ou ?profil=uc,ccf) ──
+  const demandes = (new URLSearchParams(location.search).get("profil") || "").toLowerCase().split(",").filter(Boolean);
+  const ACTIFS = demandes.length ? PROFILS.filter((p) => demandes.includes(p.id)) : PROFILS;
+  if (!ACTIFS.length) ACTIFS.push(...PROFILS);
+  const profil = (rec) => profilDe(rec, ACTIFS);
+  const estDossierValide = (rec) => !!profil(rec);
+  $("toolbar-title").textContent = ACTIFS.length === 1 ? ACTIFS[0].nom : "Notifications FPCA";
+  const libelleProfils = ACTIFS.map((p) => p.nom).join(" / ");
 
   // ── État ──
   let tous = [];          // dossiers du périmètre, lus dans toute la table (sans les filtres de la vue)
@@ -22,49 +31,74 @@
 
   const setStatus = (msg, ok = true) => {
     $("status").textContent = msg;
+    $("status").title = msg;
     $("status").style.color = ok ? "#666" : "#c9000a";
   };
-  const libelleFiltres = FILTRES.map(([, v]) => `"${v}"`).join(" / ");
   const norm = (s) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
   const lie = () => $("lier-grist").checked;
 
   // ════════════════════════════════════════════════════════════════
-  // Formulaire
+  // Formulaire (reconstruit quand le profil du dossier affiché change)
   // ════════════════════════════════════════════════════════════════
-  const BOOLEENS = new Set(GRILLE.flatMap(([, , piece, conf]) => [piece, conf]));
-  const champGrille = new Set(GRILLE.flatMap(([, , p, c, r]) => [p, c, r]));
+  let profilForm = null;
 
   function bascule(champ, libelle) {
-    const div = document.createElement("div");
-    div.className = "fr-toggle";
-    const input = Object.assign(document.createElement("input"), { type: "checkbox", id: `ch-${champ}`, className: "fr-toggle__input" });
-    const label = Object.assign(document.createElement("label"), { className: "fr-toggle__label", htmlFor: input.id, textContent: libelle });
+    const div = el("div", { className: "fr-toggle" });
+    const input = el("input", { type: "checkbox", id: `ch-${champ}`, className: "fr-toggle__input" });
+    const label = el("label", { className: "fr-toggle__label", htmlFor: input.id, textContent: libelle });
     label.dataset.frCheckedLabel = "Oui";
     label.dataset.frUncheckedLabel = "Non";
     div.append(input, label);
     return div;
   }
 
-  // Grille : une carte par pièce, deux bascules et une remarque
-  GRILLE.forEach(([code, libelle, piece, conf, rem]) => {
-    const carte = document.createElement("div");
-    carte.className = "ligne-grille";
-    const titre = document.createElement("p");
-    titre.className = "titre";
-    titre.textContent = code ? `${code} — ` : "";
-    titre.appendChild(Object.assign(document.createElement("span"), { textContent: libelle }));
-    const bascules = document.createElement("div");
-    bascules.className = "bascules";
-    bascules.append(bascule(piece, "Pièce déposée"), bascule(conf, "Conforme"));
-    const remarque = Object.assign(document.createElement("input"), {
-      type: "text", id: `ch-${rem}`, className: "fr-input", placeholder: "Remarque" });
-    remarque.setAttribute("aria-label", `Remarque — ${libelle}`);
-    const contenu = document.createElement("div");
-    contenu.className = "contenu";
-    contenu.append(bascules, remarque);
-    carte.append(titre, contenu);
-    $("form-grille").appendChild(carte);
-  });
+  function brancher(champ) {
+    const champEl = $(`ch-${champ}`);
+    if (!champEl || champEl.dataset.branche) return;
+    champEl.dataset.branche = "1";
+    // Bascules et menus : enregistrement immédiat. Textes : après une pause de frappe, et en quittant le champ.
+    if (champEl.type === "checkbox" || champEl.tagName === "SELECT") {
+      champEl.addEventListener("change", () => modifier(champ, champEl.type === "checkbox" ? champEl.checked : champEl.value, true));
+    } else {
+      champEl.addEventListener("input", () => modifier(champ, champEl.value, false));
+      champEl.addEventListener("change", enregistrer);
+    }
+  }
+
+  function construireFormulaire(p) {
+    profilForm = p;
+    const grille = $("form-grille");
+    const zoneListe = $("form-liste");
+    grille.innerHTML = "";
+    zoneListe.innerHTML = "";
+    if (!p) return;
+
+    // Grille : une carte par pièce, deux bascules et une remarque
+    p.grille.forEach((l) => {
+      const titre = el("p", { className: "titre", textContent: l.code ? `${l.code} — ` : "" });
+      titre.appendChild(el("span", { textContent: l.libelle }));
+      const bascules = el("div", { className: "bascules" });
+      bascules.append(bascule(l.piece, "Pièce déposée"), bascule(l.conf, "Conforme"));
+      const remarque = el("input", { type: "text", id: `ch-${l.rem}`, className: "fr-input", placeholder: "Remarque" });
+      remarque.setAttribute("aria-label", `Remarque — ${l.libelle}`);
+      const contenu = el("div", { className: "contenu" });
+      contenu.append(bascules, remarque);
+      const carte = el("div", { className: "ligne-grille" });
+      carte.append(titre, contenu);
+      grille.appendChild(carte);
+    });
+
+    // Liste habilitée modifiable (CCF : modules)
+    if (p.liste.editable) {
+      const groupe = el("div", { className: "fr-input-group" });
+      groupe.append(
+        el("label", { className: "fr-label petit", htmlFor: `ch-${p.liste.champ}`, textContent: `${p.liste.libelle} — un par ligne` }),
+        el("textarea", { className: "fr-input", id: `ch-${p.liste.champ}`, rows: 4 }),
+      );
+      zoneListe.appendChild(groupe);
+    }
+    p.editables.forEach(brancher);
+  }
 
   // Pourquoi un champ n'est pas modifiable (null s'il l'est)
   function blocage(champ) {
@@ -74,7 +108,7 @@
     const m = META.get(COLUMN_MAP[champ]);
     if (!m) return `Colonne ${COLUMN_MAP[champ]} absente de la table`;
     if (m.formule) return `Colonne formule ${m.colId} : à modifier dans Grist`;
-    if (BOOLEENS.has(champ) && m.type !== "Bool") return `Colonne ${m.colId} de type ${m.type} (Bool attendu)`;
+    if (profilForm?.booleens.has(champ) && m.type !== "Bool") return `Colonne ${m.colId} de type ${m.type} (Bool attendu)`;
     return null;
   }
 
@@ -82,7 +116,7 @@
   function majChoixDecision() {
     const sel = $("ch-decision");
     const m = META?.get(COLUMN_MAP.decision);
-    let choix = m?.choix?.length ? [...m.choix] : [...new Set(tous.map((r) => texte(lire(r, "decision"))).filter(Boolean))].sort();
+    const choix = m?.choix?.length ? [...m.choix] : [...new Set(tous.map((r) => texte(lire(r, "decision"))).filter(Boolean))].sort();
     const v = courant ? texte(lire(courant, "decision")) : "";
     if (v && !choix.includes(v)) choix.push(v);
     sel.innerHTML = "";
@@ -93,26 +127,32 @@
   // Remplit le formulaire. Sans "force", on ne touche ni au champ en cours de saisie
   // ni aux valeurs pas encore enregistrées (le rechargement après sauvegarde ne doit rien écraser).
   function remplirFormulaire(force) {
+    const p = courant ? profil(courant) : null;
+    if (p !== profilForm) { construireFormulaire(p); force = true; }
     majChoixDecision();
-    EDITABLES.forEach((champ) => {
-      const el = $(`ch-${champ}`);
-      if (!el) return;
+    (p?.editables || ["decision", "observations"]).forEach((champ) => {
+      const champEl = $(`ch-${champ}`);
+      if (!champEl) return;
       const raison = blocage(champ);
-      el.disabled = !!raison;
-      el.title = raison || "";
-      (el.closest(".fr-toggle, .fr-input-group, .fr-select-group") || el).classList.toggle("champ-bloque", !!raison);
+      champEl.disabled = !!raison;
+      champEl.title = raison || "";
+      (champEl.closest(".fr-toggle, .fr-input-group, .fr-select-group") || champEl).classList.toggle("champ-bloque", !!raison);
       const col = COLUMN_MAP[champ];
-      if (!force && (el === document.activeElement || (enAttente(courant?.id) && col in attente.champs))) return;
+      if (!force && (champEl === document.activeElement || (enAttente(courant?.id) && col in attente.champs))) return;
       const v = courant ? lire(courant, champ) : null;
-      if (el.type === "checkbox") el.checked = !!v;
-      else el.value = typeof v === "string" ? v : texte(v);
+      if (champEl.type === "checkbox") champEl.checked = !!v;
+      else if (Array.isArray(v)) champEl.value = FPCA.notif.lignesDe(v).join("\n");
+      else champEl.value = typeof v === "string" ? v : texte(v);
     });
   }
 
   function remplirResume() {
     const dl = $("resume-dossier");
     dl.innerHTML = "";
-    $("resume-ucare").innerHTML = "";
+    $("resume-liste").innerHTML = "";
+    const p = courant ? profil(courant) : null;
+    $("badge-profil").textContent = p?.nom || "";
+    $("badge-profil").hidden = !p;
     if (!courant) return;
     const t = (c) => texte(lire(courant, c));
     const d = (c) => formatDate(lire(courant, c));
@@ -121,10 +161,15 @@
      ["Habilitation", [d("date_debut"), d("date_fin")].filter(Boolean).join(" → ")], ["Voie", t("voie")],
      ["Durées", [t("duree_centre") && `${t("duree_centre")} h centre`, t("duree_entreprise") && `${t("duree_entreprise")} h entreprise`].filter(Boolean).join(", ")],
      ["Cycle", t("cycle")]].forEach(([libelle, valeur]) => {
-      dl.append(Object.assign(document.createElement("dt"), { textContent: libelle }),
-                Object.assign(document.createElement("dd"), { textContent: valeur || "—" }));
+      dl.append(el("dt", { textContent: libelle }), el("dd", { textContent: valeur || "—" }));
     });
-    ucareLignes(courant).forEach((l) => $("resume-ucare").appendChild(Object.assign(document.createElement("li"), { textContent: l })));
+    // Liste non modifiable (UC : UCARE issues d'une formule) affichée dans le résumé
+    if (p && !p.liste.editable) {
+      const lignes = listeLignes(courant, p);
+      $("resume-liste").append(el("li", { className: "titre-liste", textContent: p.liste.libelle }));
+      if (!lignes.length) $("resume-liste").append(el("li", { textContent: "—" }));
+      lignes.forEach((l) => $("resume-liste").appendChild(el("li", { textContent: l })));
+    }
   }
 
   // ════════════════════════════════════════════════════════════════
@@ -137,10 +182,10 @@
   const enAttente = (rowId) => attente && attente.rowId === rowId;
 
   function etatSauvegarde(cle, detail = "") {
-    const el = $("etat-sauvegarde");
-    el.className = `etat-sauvegarde${cle === "erreur" ? " erreur" : ""}`;
-    el.textContent = { modifie: "· modifié", encours: "· enregistrement…", enregistre: "· ✓ enregistré",
-                       erreur: `· ✗ non enregistré${detail ? ` (${detail})` : ""}`, "": "" }[cle];
+    const e = $("etat-sauvegarde");
+    e.className = `etat-sauvegarde${cle === "erreur" ? " erreur" : ""}`;
+    e.textContent = { modifie: "· modifié", encours: "· enregistrement…", enregistre: "· ✓ enregistré",
+                      erreur: `· ✗ non enregistré${detail ? ` (${detail})` : ""}`, "": "" }[cle];
   }
 
   function modifier(champ, valeur, immediat) {
@@ -153,7 +198,8 @@
     etatSauvegarde("modifie");
     clearTimeout(minuteurSauvegarde);
     minuteurSauvegarde = setTimeout(enregistrer, immediat ? 0 : 800);
-    pageApercu = champGrille.has(champ) ? 2 : 1;
+    const p = profil(courant);
+    pageApercu = p?.grille.some((l) => [l.piece, l.conf, l.rem].includes(champ)) ? 2 : 1;
     planifierApercu();
   }
 
@@ -179,18 +225,7 @@
     return fileEcriture;
   }
   addEventListener("pagehide", enregistrer);
-
-  // Bascules : enregistrement immédiat. Textes : après une pause de frappe, et en quittant le champ.
-  EDITABLES.forEach((champ) => {
-    const el = $(`ch-${champ}`);
-    if (!el) return;
-    if (el.type === "checkbox" || el.tagName === "SELECT") {
-      el.addEventListener("change", () => modifier(champ, el.type === "checkbox" ? el.checked : el.value, true));
-    } else {
-      el.addEventListener("input", () => modifier(champ, el.value, false));
-      el.addEventListener("change", enregistrer);
-    }
-  });
+  ["decision", "observations"].forEach(brancher);
 
   // ════════════════════════════════════════════════════════════════
   // Aperçu : le vrai PDF
@@ -209,7 +244,8 @@
   async function genererApercu() {
     const jeton = ++jetonApercu;
     const iframe = $("apercu-pdf");
-    if (!courant) {
+    const p = courant ? profil(courant) : null;
+    if (!p) {
       iframe.hidden = true;
       $("apercu-vide").hidden = false;
       signatureApercu = "";
@@ -218,7 +254,7 @@
     const signature = JSON.stringify(courant);
     if (signature === signatureApercu && !iframe.hidden) return;
     try {
-      const blob = await versBlob(construire(courant));
+      const blob = await versBlob(construireDocument(courant, p));
       if (jeton !== jetonApercu) return;   // une génération plus récente est en cours
       const ancien = urlApercu;
       urlApercu = URL.createObjectURL(blob);
@@ -253,17 +289,19 @@
       .map((v) => texte(v)).filter(Boolean).join(" — ") || `Ligne ${rec.id}`;
 
   // ── Filtres croisés : chaque menu ne propose que les valeurs compatibles avec les autres filtres ──
+  const VIDE = "∅";   // valeur des dossiers où le champ n'est pas renseigné
   const FACETTES = [
+    { champ: "type", id: "filtre-type", tous: "Tous types", valeur: (rec) => profil(rec)?.nom },
     { champ: "departement", id: "filtre-departement", tous: "Tous départements" },
     { champ: "organisme", id: "filtre-organisme", tous: "Tous organismes" },
     { champ: "diplome", id: "filtre-diplome", tous: "Tous diplômes" },
   ];
-  const VIDE = "∅";   // valeur des dossiers où le champ n'est pas renseigné
-  const cle = (rec, champ) => texte(lire(rec, champ)).trim() || VIDE;
+  $("filtre-type").hidden = ACTIFS.length < 2;
+  const cle = (rec, f) => (f.valeur ? f.valeur(rec) : texte(lire(rec, f.champ)).trim()) || VIDE;
   const choix = (f) => $(f.id).value;
 
   // Mémorise recherche et filtres : Grist recharge souvent le widget en changeant de page
-  const MEMO = "fpca-actu-uc:filtres";
+  const MEMO = `fpca-notif:filtres:${ACTIFS.map((p) => p.id).join(",")}`;
   function memoriser() {
     const etat = { recherche: $("recherche").value };
     FACETTES.forEach((f) => (etat[f.champ] = choix(f)));
@@ -280,7 +318,7 @@
       .map((c) => texte(lire(rec, c))).join(" "));
     return mots.every((m) => cible.includes(m));
   }
-  const passe = (rec, sauf) => FACETTES.every((f) => f === sauf || !choix(f) || cle(rec, f.champ) === choix(f));
+  const passe = (rec, sauf) => FACETTES.every((f) => f === sauf || !choix(f) || cle(rec, f) === choix(f));
 
   function majFacettes(mots) {
     FACETTES.forEach((f) => {
@@ -288,7 +326,7 @@
       const voulu = sel.value || memoire[f.champ] || "";
       const base = tous.filter((r) => correspond(r, mots) && passe(r, f));
       const compte = new Map();
-      base.forEach((r) => { const k = cle(r, f.champ); compte.set(k, (compte.get(k) || 0) + 1); });
+      base.forEach((r) => { const k = cle(r, f); compte.set(k, (compte.get(k) || 0) + 1); });
       if (voulu && !compte.has(voulu)) compte.set(voulu, 0);
       const valeurs = [...compte.keys()].sort((x, y) =>
         x === VIDE ? 1 : y === VIDE ? -1 : x.localeCompare(y, "fr", { numeric: true, sensitivity: "base" }));
@@ -316,7 +354,7 @@
     if (!tous.length && !mots.length) return "Aucun dossier";
     if (!mots.length) return "Aucun dossier ne correspond aux filtres";
     const masques = tous.filter((r) => correspond(r, mots));
-    if (masques.length) return `${masques.length > 1 ? `${masques.length} dossiers masqués` : "Dossier masqué"} par les filtres département / organisme / diplôme`;
+    if (masques.length) return `${masques.length > 1 ? `${masques.length} dossiers masqués` : "Dossier masqué"} par les filtres`;
     const autres = horsPerimetre.filter((r) => correspond(r, mots));
     if (!autres.length) return "Aucun dossier ne correspond";
     const details = autres.slice(0, 3).map((r) => `${texte(lire(r, "dossier_number")) || `ligne ${r.id}`} : ${motifHorsPerimetre(r)}`);
@@ -393,6 +431,13 @@
   // ════════════════════════════════════════════════════════════════
   grist.ready({ requiredAccess: "full" });
 
+  // Colonnes attendues par les profils actifs mais absentes de la table : signalées une fois
+  function colonnesManquantes() {
+    if (!META) return [];
+    const champs = new Set(ACTIFS.flatMap((p) => [...p.editables, p.liste.champ, ...p.criteres.map(([c]) => c)]));
+    return [...champs].map((c) => COLUMN_MAP[c]).filter((col) => col && !META.has(col));
+  }
+
   // onRecords sert de signal : on relit toute la table pour ne pas dépendre des filtres de la vue
   let minuteur = null;
   let dernierSecours = [];
@@ -402,7 +447,7 @@
     source = r.source;
     if (!META && source === "table") {
       try { META = await FPCA.grist.colonnes(); }
-      catch (e) { console.warn("[Actualisation UC] Métadonnées des colonnes illisibles :", e); }
+      catch (e) { console.warn("[Notifications FPCA] Métadonnées des colonnes illisibles :", e); }
     }
     // Réapplique les modifications pas encore confirmées par Grist
     [envoi, attente].forEach((lot) => {
@@ -418,8 +463,11 @@
       if (i >= 0 && courant?.id !== liste[i].id) aller(i, { sync: false });
     }
     setStatus("");
-    if (!tous.length) setStatus(`⚠️ Aucun dossier de type ${libelleFiltres}`, false);
+    const manquantes = colonnesManquantes();
+    if (manquantes.length) console.warn("[Notifications FPCA] Colonnes introuvables :", manquantes);
+    if (!tous.length) setStatus(`⚠️ Aucun dossier de type ${libelleProfils}`, false);
     else if (source === "vue") setStatus("⚠️ Table illisible : dossiers de la vue seulement, saisie désactivée", false);
+    else if (manquantes.length) setStatus(`⚠️ Colonnes introuvables : ${manquantes.join(", ")}`, false);
   }
 
   grist.onRecords((records) => {
@@ -443,18 +491,19 @@
       return;
     }
     const num = lire(record, "dossier_number") ?? record.id;
-    setStatus(`Ligne ${num} hors périmètre (pas ${libelleFiltres}) : dossier affiché inchangé`);
+    setStatus(`Ligne ${num} : ${motifHorsPerimetre(record)} — dossier affiché inchangé`);
   });
 
   // ════════════════════════════════════════════════════════════════
   // Téléchargements
   // ════════════════════════════════════════════════════════════════
   $("btn-pdf").addEventListener("click", async () => {
-    if (!courant) return;
+    const p = courant && profil(courant);
+    if (!p) return;
     try {
       await enregistrer();
       setStatus("⏳ Génération du PDF…");
-      telecharger(await versBlob(construire(courant)), nomFichier(courant));
+      telecharger(await versBlob(construireDocument(courant, p)), nomFichier(courant, p));
       setStatus("PDF téléchargé");
     } catch (err) {
       console.error(err);
@@ -474,16 +523,18 @@
       const vus = new Map();
       for (let i = 0; i < n; i++) {
         const rec = lot[i];
+        const p = profil(rec);
         setStatus(`⏳ ${i + 1}/${n} — ${lire(rec, "dossier_number") ?? rec.id}…`);
-        let nom = nomFichier(rec);
+        let nom = nomFichier(rec, p);
         const k = (vus.get(nom) || 0) + 1;
         vus.set(nom, k);
         if (k > 1) nom = nom.replace(/\.pdf$/, `-${k}.pdf`);
-        zip.file(nom, await versBlob(construire(rec)));
+        zip.file(nom, await versBlob(construireDocument(rec, p)));
       }
       setStatus("⏳ Compression de l'archive…");
       const date = new Date().toISOString().slice(0, 10);
-      telecharger(await zip.generateAsync({ type: "blob" }), `actualisations_UC_${date}.zip`);
+      const types = [...new Set(lot.map((r) => profil(r).id.toUpperCase()))].join("-");
+      telecharger(await zip.generateAsync({ type: "blob" }), `notifications_${types}_${date}.zip`);
       setStatus(`${n} PDF dans l'archive`);
     } catch (err) {
       console.error(err);
