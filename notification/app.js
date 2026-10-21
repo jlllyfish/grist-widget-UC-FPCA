@@ -279,6 +279,51 @@
     });
   }
   $("onglet-saisie").addEventListener("click", () => onglet("saisie"));
+
+  // ── Séparateur déplaçable : largeur du formulaire en %, mémorisée ──
+  const MEMO_LARGEUR = "fpca-notif:largeur-saisie";
+  const sep = $("separateur");
+  function largeur(pct, memoriser = true) {
+    const corps = $("corps").getBoundingClientRect().width || 1;
+    const min = (280 / corps) * 100;                                   // 280 px minimum de chaque côté
+    const v = Math.min(100 - min, Math.max(min, pct));
+    $("corps").style.setProperty("--largeur-saisie", `${v.toFixed(1)}%`);
+    sep.setAttribute("aria-valuenow", String(Math.round(v)));
+    if (memoriser) try { localStorage.setItem(MEMO_LARGEUR, String(v)); } catch {}
+  }
+  sep.setAttribute("aria-valuemin", "0");
+  sep.setAttribute("aria-valuemax", "100");
+  let pctInitial = 50;
+  try { pctInitial = Number(localStorage.getItem(MEMO_LARGEUR)) || 50; } catch {}
+  largeur(pctInitial, false);
+
+  sep.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    sep.setPointerCapture(e.pointerId);
+    sep.classList.add("actif");
+    $("corps").classList.add("redimension");
+    const rect = $("corps").getBoundingClientRect();
+    const deplacer = (ev) => largeur(((ev.clientX - rect.left) / rect.width) * 100, false);
+    const fin = (ev) => {
+      sep.removeEventListener("pointermove", deplacer);
+      sep.classList.remove("actif");
+      $("corps").classList.remove("redimension");
+      largeur(((ev.clientX - rect.left) / rect.width) * 100);
+    };
+    sep.addEventListener("pointermove", deplacer);
+    sep.addEventListener("pointerup", fin, { once: true });
+    sep.addEventListener("pointercancel", fin, { once: true });
+  });
+  sep.addEventListener("dblclick", () => largeur(50));
+  sep.addEventListener("keydown", (e) => {
+    const actuel = Number(sep.getAttribute("aria-valuenow")) || 50;
+    const pas = e.shiftKey ? 10 : 2;
+    if (e.key === "ArrowLeft") largeur(actuel - pas);
+    else if (e.key === "ArrowRight") largeur(actuel + pas);
+    else if (e.key === "Home" || e.key === "Enter") largeur(50);
+    else return;
+    e.preventDefault();
+  });
   $("onglet-apercu").addEventListener("click", () => onglet("apercu"));
 
   // ════════════════════════════════════════════════════════════════

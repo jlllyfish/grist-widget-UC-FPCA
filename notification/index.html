@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <!-- Version du widget : la changer ICI et dans tous les ?v= de cette page à chaque publication -->
-    <meta name="fpca-version" content="0.5.0" />
+    <meta name="fpca-version" content="0.5.1" />
     <!-- Politique de sécurité du contenu : seul le code de ce dépôt et l'API Grist sont autorisés.
          'unsafe-eval' est imposé par grist-plugin-api.js (paquet webpack qui exécute ses modules via eval).
          frame-src / object-src blob: : aperçu du PDF généré dans le navigateur. -->
@@ -15,18 +15,18 @@
     <title>Notifications FPCA</title>
     <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
     <!-- Bibliothèques embarquées (versions figées, voir vendor/README.md) -->
-    <script src="../vendor/pdfmake.min.js?v=0.5.0"></script>
-    <script src="../vendor/jszip.min.js?v=0.5.0"></script>
-    <script src="../vendor/marianne.js?v=0.5.0"></script>
+    <script src="../vendor/pdfmake.min.js?v=0.5.1"></script>
+    <script src="../vendor/jszip.min.js?v=0.5.1"></script>
+    <script src="../vendor/marianne.js?v=0.5.1"></script>
     <!-- Socle commun aux widgets FPCA -->
-    <script src="../commun/logo.js?v=0.5.0"></script>
-    <script src="../commun/pdf.js?v=0.5.0"></script>
-    <script src="../commun/grist.js?v=0.5.0"></script>
+    <script src="../commun/logo.js?v=0.5.1"></script>
+    <script src="../commun/pdf.js?v=0.5.1"></script>
+    <script src="../commun/grist.js?v=0.5.1"></script>
     <!-- Widget -->
-    <script src="profils.js?v=0.5.0"></script>
-    <script src="document.js?v=0.5.0"></script>
-    <link rel="stylesheet" href="../vendor/dsfr/dsfr.min.css?v=0.5.0" />
-    <link rel="stylesheet" href="../vendor/dsfr/icones.css?v=0.5.0" />
+    <script src="profils.js?v=0.5.1"></script>
+    <script src="document.js?v=0.5.1"></script>
+    <link rel="stylesheet" href="../vendor/dsfr/dsfr.min.css?v=0.5.1" />
+    <link rel="stylesheet" href="../vendor/dsfr/icones.css?v=0.5.1" />
     <style>
       html, body { height: 100%; }
       body { display: flex; flex-direction: column; background: #f6f6f6; color: #161616; overflow: hidden; }
@@ -52,13 +52,23 @@
       /* ── Corps : saisie à gauche, aperçu du PDF à droite ── */
       .onglets { display: none; gap: 0.5rem; padding: 0.5rem 1rem 0; background: #f6f6f6; flex-shrink: 0; }
       .corps { flex: 1; min-height: 0; display: flex; }
-      .saisie { flex: 0 0 min(560px, 48%); overflow: auto; padding: 1rem; border-right: 1px solid #ddd; background: #fff; }
-      .apercu { flex: 1; min-width: 0; display: flex; background: #525659; }
+      .saisie { flex: 0 0 var(--largeur-saisie, 50%); min-width: 280px; overflow: auto; padding: 1rem; background: #fff; }
+      /* Séparateur déplaçable entre la saisie et l'aperçu (souris, tactile ou flèches du clavier) */
+      .separateur { flex: 0 0 8px; cursor: col-resize; background: #e5e5e5; border-left: 1px solid #ddd; border-right: 1px solid #ddd;
+                    position: relative; touch-action: none; }
+      .separateur::after { content: ""; position: absolute; top: 50%; left: 2px; width: 2px; height: 32px; margin-top: -16px;
+                           border-left: 1px solid #929292; border-right: 1px solid #929292; }
+      .separateur:hover, .separateur:focus-visible, .separateur.actif { background: #cacafb; outline: none; }
+      .corps.redimension { cursor: col-resize; user-select: none; }
+      .corps.redimension iframe { pointer-events: none; }   /* sinon l'aperçu PDF capte la souris pendant le glissement */
+      .apercu { flex: 1; min-width: 280px; display: flex; background: #525659; }
       #apercu-pdf { flex: 1; border: 0; width: 100%; height: 100%; }
       #apercu-vide { margin: auto; color: #ddd; font-size: 0.875rem; }
       @media (max-width: 900px) {
         .onglets { display: flex; }
-        .saisie { flex: 1; border-right: 0; }
+        .saisie { flex: 1; min-width: 0; }
+        .apercu { min-width: 0; }
+        .separateur { display: none; }
         .corps.vue-saisie .apercu, .corps.vue-apercu .saisie { display: none; }
       }
 
@@ -135,7 +145,7 @@
 
     <div class="corps vue-saisie" id="corps">
       <!-- Formulaire : la grille est générée par app.js à partir de GRILLE (document.js) -->
-      <section class="saisie" aria-label="Saisie">
+      <section class="saisie" id="zone-saisie" aria-label="Saisie">
         <h2>Dossier <span class="fr-badge fr-badge--sm fr-badge--info" id="badge-profil" hidden></span></h2>
         <dl class="dossier" id="resume-dossier"></dl>
         <ul class="ucare" id="resume-liste"></ul>
@@ -157,6 +167,10 @@
       </section>
 
       <!-- Aperçu : le vrai PDF, régénéré après chaque modification -->
+      <div class="separateur" id="separateur" role="separator" tabindex="0" aria-orientation="vertical"
+           aria-controls="zone-saisie" aria-label="Largeur du formulaire"
+           title="Glisser pour ajuster les largeurs · double-clic : 50 / 50"></div>
+
       <section class="apercu" aria-label="Aperçu du PDF">
         <iframe id="apercu-pdf" title="Aperçu du PDF" hidden></iframe>
         <p id="apercu-vide">Aucun dossier à afficher</p>
@@ -168,6 +182,6 @@
       <span id="version"></span>
     </footer>
 
-    <script src="app.js?v=0.5.0"></script>
+    <script src="app.js?v=0.5.1"></script>
   </body>
 </html>
