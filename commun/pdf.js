@@ -25,7 +25,14 @@ globalThis.FPCA = globalThis.FPCA || {};
   }
   function texte(v) {
     if (v === null || v === undefined || v === false) return "";
-    if (Array.isArray(v)) return v.filter((x) => x !== "L").map(texte).filter(Boolean).join(", ");
+    // Valeurs brutes de Grist : ["L", …] liste, ["E", …] erreur de formule, ["d", s] date encodée
+    if (Array.isArray(v) && typeof v[0] === "string" && v[0].length === 1) {
+      if (v[0] === "L") return v.slice(1).map(texte).filter(Boolean).join(", ");
+      if (v[0] === "E") return "#Erreur";
+      if (v[0] === "d" || v[0] === "D") return formatDate(v[1]);
+      return "";
+    }
+    if (Array.isArray(v)) return v.map(texte).filter(Boolean).join(", ");
     if (v instanceof Date) return formatDate(v);
     return nbsp(String(v));
   }

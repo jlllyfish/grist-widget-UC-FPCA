@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <!-- Version du widget : la changer ICI et dans tous les ?v= de cette page à chaque publication -->
-    <meta name="fpca-version" content="0.1.1" />
+    <meta name="fpca-version" content="0.2.0" />
     <!-- Politique de sécurité du contenu : seul le code de ce dépôt et l'API Grist sont autorisés.
          'unsafe-eval' est imposé par grist-plugin-api.js (paquet webpack qui exécute ses modules via eval). -->
     <meta
@@ -14,14 +14,15 @@
     <title>Actualisation UC</title>
     <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
     <!-- Bibliothèques embarquées (versions figées, voir vendor/README.md) -->
-    <script src="../vendor/pdfmake.min.js?v=0.1.1"></script>
-    <script src="../vendor/jszip.min.js?v=0.1.1"></script>
-    <script src="../vendor/marianne.js?v=0.1.1"></script>
+    <script src="../vendor/pdfmake.min.js?v=0.2.0"></script>
+    <script src="../vendor/jszip.min.js?v=0.2.0"></script>
+    <script src="../vendor/marianne.js?v=0.2.0"></script>
     <!-- Socle commun aux widgets FPCA -->
-    <script src="../commun/logo.js?v=0.1.1"></script>
-    <script src="../commun/pdf.js?v=0.1.1"></script>
+    <script src="../commun/logo.js?v=0.2.0"></script>
+    <script src="../commun/pdf.js?v=0.2.0"></script>
+    <script src="../commun/grist.js?v=0.2.0"></script>
     <!-- Widget -->
-    <script src="document.js?v=0.1.1"></script>
+    <script src="document.js?v=0.2.0"></script>
     <style>
       @font-face { font-family: "Marianne"; font-weight: 400; src: url("../vendor/fonts/Marianne-Regular.woff2") format("woff2"); }
       @font-face { font-family: "Marianne"; font-weight: 400; font-style: italic; src: url("../vendor/fonts/Marianne-Regular_Italic.woff2") format("woff2"); }
@@ -32,7 +33,15 @@
       /* ── Barre d'outils ── */
       #toolbar { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #fff;
                  border-bottom: 2px solid #000091; position: sticky; top: 0; z-index: 200; flex-wrap: wrap; }
-      #toolbar-title { color: #1e1e1e; font-size: 14px; font-weight: 700; flex: 1; }
+      #toolbar-title { color: #1e1e1e; font-size: 14px; font-weight: 700; }
+      #nav { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; flex-wrap: wrap; }
+      #nav input[type="search"], #nav select { border: 1px solid #ccc; border-radius: 4px; padding: 6px 8px; font: inherit;
+                                               font-size: 12px; background: #fff; color: #161616; }
+      #recherche { width: 200px; }
+      #sel-dossier { width: 320px; max-width: 100%; }
+      #btn-prec, #btn-suiv { background: #334d6e; padding: 5px 11px; font-size: 16px; line-height: 1; }
+      #btn-prec:hover:not(:disabled), #btn-suiv:hover:not(:disabled) { background: #4a6fa5; }
+      .lier { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #3a3a3a; white-space: nowrap; }
       #nav-counter { color: #3a3a3a; font-size: 12px; font-weight: 600; min-width: 52px; text-align: center; }
       #status { font-size: 11px; color: #666; font-family: monospace; max-width: 320px;
                 white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -77,10 +86,19 @@
   <body>
     <div id="toolbar">
       <span id="toolbar-title">Actualisation UC</span>
-      <span id="nav-counter">— / —</span>
+      <div id="nav">
+        <input id="recherche" type="search" placeholder="Rechercher…" title="N° de dossier, organisme, site, diplôme ou département" aria-label="Rechercher un dossier" />
+        <button id="btn-prec" title="Dossier précédent" disabled>◀</button>
+        <select id="sel-dossier" aria-label="Dossier affiché"></select>
+        <button id="btn-suiv" title="Dossier suivant" disabled>▶</button>
+        <span id="nav-counter">— / —</span>
+        <label class="lier" title="Le widget suit la ligne sélectionnée dans Grist, et inversement">
+          <input id="lier-grist" type="checkbox" checked /> Suivre Grist
+        </label>
+      </div>
       <div id="status">En attente de Grist…</div>
       <button id="btn-pdf" disabled>PDF</button>
-      <button id="btn-all" disabled>Tout télécharger (ZIP)</button>
+      <button id="btn-all" disabled>ZIP</button>
     </div>
 
     <!-- Page 1 : notification -->
@@ -162,6 +180,6 @@
       <span id="version"></span>
     </footer>
 
-    <script src="app.js?v=0.1.1"></script>
+    <script src="app.js?v=0.2.0"></script>
   </body>
 </html>
