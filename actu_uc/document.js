@@ -18,6 +18,7 @@ globalThis.FPCA = globalThis.FPCA || {};
 
     // ── Informations dossier ──
     type_de_demande: "type_de_demande",
+    mode_evaluation: "quel_est_le_mode_d_evaluation",
     organisme: "Orga",
     departement: "Dpt_code",
     annee_depot: "Ref_dossier_date_derniere_modification",
@@ -79,6 +80,20 @@ globalThis.FPCA = globalThis.FPCA || {};
     ["quel_est_le_mode_d_evaluation", "Unités Capitalisables (UC)"],
   ];
   const estDossierValide = (r) => !!r && FILTRES.every(([col, v]) => r[col] === v);
+
+  // Pourquoi un dossier n'est pas traité par ce widget (affiché quand la recherche le trouve hors périmètre)
+  const MOTIFS = [
+    ["type_de_demande", "Habilitation complète", "dossier d'habilitation"],
+    ["mode_evaluation", "Contrôle en Cours de Formation (CCF)", "dossier évaluation CCF"],
+  ];
+  const simplifier = (s) => String(s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+  function motifHorsPerimetre(rec) {
+    for (const [champ, valeur, motif] of MOTIFS)
+      if (simplifier(lire(rec, champ)) === simplifier(valeur)) return motif;
+    const type = lire(rec, "type_de_demande");
+    const mode = lire(rec, "mode_evaluation");
+    return `hors périmètre (${[type, mode].filter(Boolean).join(" / ") || "type non renseigné"})`;
+  }
 
   // ── Lignes de la grille d'analyse : [code, libellé, clé pièce] — conformité et remarque en découlent ──
   const GRILLE = [
@@ -294,6 +309,6 @@ globalThis.FPCA = globalThis.FPCA || {};
     "decision", "observations",
   ];
 
-  globalThis.FPCA.actuUC = { COLUMN_MAP, FILTRES, GRILLE, EDITABLES, estDossierValide, lire, ucareLignes, nomFichier,
+  globalThis.FPCA.actuUC = { COLUMN_MAP, FILTRES, GRILLE, EDITABLES, estDossierValide, motifHorsPerimetre, lire, ucareLignes, nomFichier,
                              construireDocument };
 })();

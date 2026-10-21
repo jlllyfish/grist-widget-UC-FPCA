@@ -3,7 +3,7 @@
 (function () {
   const $ = (id) => document.getElementById(id);
   const { formatDate, texte, versBlob, telecharger } = FPCA.pdf;
-  const { COLUMN_MAP, lire, estDossierValide, ucareLignes, nomFichier, GRILLE, EDITABLES, FILTRES } = FPCA.actuUC;
+  const { COLUMN_MAP, lire, estDossierValide, motifHorsPerimetre, ucareLignes, nomFichier, GRILLE, EDITABLES, FILTRES } = FPCA.actuUC;
   const construire = FPCA.actuUC.construireDocument;
 
   // ── Version ──
@@ -14,6 +14,7 @@
 
   // ── État ──
   let tous = [];          // dossiers du périmètre, lus dans toute la table (sans les filtres de la vue)
+  let horsPerimetre = []; // autres lignes de la table : servent à expliquer une recherche sans résultat
   let liste = [];         // dossiers retenus par la recherche et les filtres
   let courant = null;     // dossier affiché
   let source = "";        // "table" ou "vue" (repli)
@@ -310,16 +311,32 @@
     planifierApercu(change ? 0 : 500);
   }
 
+  // Recherche sans résultat : explique pourquoi (dossier d'un autre type, ou masqué par les filtres)
+  function messageSansResultat(mots) {
+    if (!tous.length && !mots.length) return "Aucun dossier";
+    if (!mots.length) return "Aucun dossier ne correspond aux filtres";
+    const masques = tous.filter((r) => correspond(r, mots));
+    if (masques.length) return `${masques.length > 1 ? `${masques.length} dossiers masqués` : "Dossier masqué"} par les filtres département / organisme / diplôme`;
+    const autres = horsPerimetre.filter((r) => correspond(r, mots));
+    if (!autres.length) return "Aucun dossier ne correspond";
+    const details = autres.slice(0, 3).map((r) => `${texte(lire(r, "dossier_number")) || `ligne ${r.id}`} : ${motifHorsPerimetre(r)}`);
+    if (autres.length > 3) details.push(`et ${autres.length - 3} autre(s)`);
+    return details.join(" · ");
+  }
+
   function majListe() {
     const mots = norm($("recherche").value).split(/\s+/).filter(Boolean);
     majFacettes(mots);
     liste = tous.filter((r) => correspond(r, mots) && passe(r, null));
     const filtre = liste.length !== tous.length || mots.length || FACETTES.some(choix);
     $("btn-reinit").hidden = !filtre;
-    $("nb-resultats").textContent = tous.length ? `${liste.length} dossier${liste.length > 1 ? "s" : ""} sur ${tous.length}` : "";
+    const message = liste.length ? "" : messageSansResultat(mots);
+    $("nb-resultats").textContent = message || (tous.length ? `${liste.length} dossier${liste.length > 1 ? "s" : ""} sur ${tous.length}` : "");
+    $("nb-resultats").classList.toggle("alerte", !!message);
+    $("nb-resultats").title = message;
     $("sel-dossier").innerHTML = "";
     if (liste.length) liste.forEach((r, i) => $("sel-dossier").add(new Option(libelle(r), String(i))));
-    else $("sel-dossier").add(new Option(tous.length ? "Aucun dossier ne correspond" : "Aucun dossier", ""));
+    else $("sel-dossier").add(new Option(message, ""));
     // Garde le dossier affiché s'il est toujours dans la liste, sinon prend le premier
     const i = courant ? liste.findIndex((r) => r.id === courant.id) : -1;
     if (i >= 0) courant = liste[i];
@@ -393,6 +410,7 @@
       if (rec) Object.assign(rec, lot.champs);
     });
     tous = r.lignes.filter(estDossierValide);
+    horsPerimetre = r.lignes.filter((x) => !estDossierValide(x));
     majListe();
     if (idGristEnAttente !== null) {
       const i = lie() ? liste.findIndex((x) => x.id === idGristEnAttente) : -1;
