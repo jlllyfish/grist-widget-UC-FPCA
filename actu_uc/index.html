@@ -3,37 +3,39 @@
   <head>
     <meta charset="UTF-8" />
     <!-- Version du widget : la changer ICI et dans tous les ?v= de cette page à chaque publication -->
-    <meta name="fpca-version" content="0.3.0" />
+    <meta name="fpca-version" content="0.4.0" />
     <!-- Politique de sécurité du contenu : seul le code de ce dépôt et l'API Grist sont autorisés.
-         'unsafe-eval' est imposé par grist-plugin-api.js (paquet webpack qui exécute ses modules via eval). -->
+         'unsafe-eval' est imposé par grist-plugin-api.js (paquet webpack qui exécute ses modules via eval).
+         frame-src / object-src blob: : aperçu du PDF généré dans le navigateur. -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' blob:; base-uri 'none'; form-action 'none'"
+      content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' blob:; frame-src blob:; object-src blob:; base-uri 'none'; form-action 'none'"
     />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
     <title>Actualisation UC</title>
     <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
     <!-- Bibliothèques embarquées (versions figées, voir vendor/README.md) -->
-    <script src="../vendor/pdfmake.min.js?v=0.3.0"></script>
-    <script src="../vendor/jszip.min.js?v=0.3.0"></script>
-    <script src="../vendor/marianne.js?v=0.3.0"></script>
+    <script src="../vendor/pdfmake.min.js?v=0.4.0"></script>
+    <script src="../vendor/jszip.min.js?v=0.4.0"></script>
+    <script src="../vendor/marianne.js?v=0.4.0"></script>
     <!-- Socle commun aux widgets FPCA -->
-    <script src="../commun/logo.js?v=0.3.0"></script>
-    <script src="../commun/pdf.js?v=0.3.0"></script>
-    <script src="../commun/grist.js?v=0.3.0"></script>
+    <script src="../commun/logo.js?v=0.4.0"></script>
+    <script src="../commun/pdf.js?v=0.4.0"></script>
+    <script src="../commun/grist.js?v=0.4.0"></script>
     <!-- Widget -->
-    <script src="document.js?v=0.3.0"></script>
-    <link rel="stylesheet" href="../vendor/dsfr/dsfr.min.css?v=0.3.0" />
-    <link rel="stylesheet" href="../vendor/dsfr/icones.css?v=0.3.0" />
+    <script src="document.js?v=0.4.0"></script>
+    <link rel="stylesheet" href="../vendor/dsfr/dsfr.min.css?v=0.4.0" />
+    <link rel="stylesheet" href="../vendor/dsfr/icones.css?v=0.4.0" />
     <style>
-      body { background: #e8eaf0; color: #111; padding-bottom: 36px; }
+      html, body { height: 100%; }
+      body { display: flex; flex-direction: column; background: #f6f6f6; color: #161616; overflow: hidden; }
       [hidden] { display: none !important; }
 
       /* ── Barres du haut (composants DSFR) ── */
-      .barres { position: sticky; top: 0; z-index: 200; background: #fff; border-bottom: 2px solid #000091; }
+      .barres { flex-shrink: 0; background: #fff; border-bottom: 2px solid #000091; }
       .barre { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 1rem; flex-wrap: wrap; }
       .barre + .barre { border-top: 1px solid #e5e5e5; }
-      .barre .fr-select, .barre .fr-input { margin-top: 0; }
+      .barre .fr-select, .barre .fr-input { margin-top: 0; font-size: 0.875rem; padding-top: 0.375rem; padding-bottom: 0.375rem; }
       #toolbar-title { font-weight: 700; font-size: 1rem; margin: 0; white-space: nowrap; }
       .nav { display: flex; align-items: center; gap: 0.25rem; flex: 1 1 360px; min-width: 0; }
       #sel-dossier { flex: 1; min-width: 0; }
@@ -42,43 +44,48 @@
       .actions { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
       #status { font-size: 0.75rem; color: #666; max-width: 360px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .filtre { flex: 1 1 170px; min-width: 150px; }
-      .barre .fr-select, .barre .fr-input { font-size: 0.875rem; padding-top: 0.375rem; padding-bottom: 0.375rem; }
       .filtre-recherche { flex: 2 1 220px; }
       #nb-resultats { font-size: 0.875rem; color: #3a3a3a; white-space: nowrap; }
 
-      /* ── Pied du widget : version ── */
-      #pied-widget { position: fixed; left: 0; right: 0; bottom: 0; z-index: 200; padding: 6px 16px; background: #fff;
-                     border-top: 1px solid #ddd; font-size: 11px; color: #666; display: flex; justify-content: space-between; }
+      /* ── Corps : saisie à gauche, aperçu du PDF à droite ── */
+      .onglets { display: none; gap: 0.5rem; padding: 0.5rem 1rem 0; background: #f6f6f6; flex-shrink: 0; }
+      .corps { flex: 1; min-height: 0; display: flex; }
+      .saisie { flex: 0 0 min(560px, 48%); overflow: auto; padding: 1rem; border-right: 1px solid #ddd; background: #fff; }
+      .apercu { flex: 1; min-width: 0; display: flex; background: #525659; }
+      #apercu-pdf { flex: 1; border: 0; width: 100%; height: 100%; }
+      #apercu-vide { margin: auto; color: #ddd; font-size: 0.875rem; }
+      @media (max-width: 900px) {
+        .onglets { display: flex; }
+        .saisie { flex: 1; border-right: 0; }
+        .corps.vue-saisie .apercu, .corps.vue-apercu .saisie { display: none; }
+      }
 
-      /* ── Aperçu A4 ── */
-      .page-wrapper { padding: 20px; display: flex; justify-content: center; }
-      .document { font-size: 11px; line-height: 1.4; color: #111; }
-      .document p, .document em { font-size: inherit; }
-      .document { background: white; width: 210mm; min-height: 297mm; padding: 15mm; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18); }
-      .document.p2 { min-height: 80mm; }
-      .doc-header { display: flex; align-items: flex-start; margin-bottom: 6px; }
-      .doc-header .logo-cell { width: 75mm; }
-      .logo-ministere { width: auto; height: auto; max-height: 90px; max-width: 65mm; object-fit: contain; display: block; }
-      .doc-header .header-text { flex: 1; padding: 8px 12px; font-size: 11px; line-height: 1.6; text-align: right; }
-      .refs { margin: 8px 0; font-size: 11px; line-height: 1.9; }
-      .refs .val { font-style: normal; font-weight: 600; color: #1a3a6b; }
-      .doc-title { text-align: center; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
-                   margin: 10px 0 12px; padding: 6px; border: 2px solid #000; background: #f0f4ff; }
-      table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 8px; }
-      td, th { border: 1px solid #000; padding: 4px 7px; vertical-align: middle; }
-      .table-infos td:first-child { font-style: italic; width: 52mm; background: #f7f8fc; }
-      .table-infos td:last-child { font-weight: 600; color: #1a3a6b; }
-      .ucare-box { margin-bottom: 8px; border: 1px solid #000; padding: 5px 7px; font-size: 11px; }
-      #ucare-list { margin-top: 4px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px 8px; font-size: 9.5px; }
-      .table-decision td:first-child { font-weight: 700; text-transform: uppercase; width: 42mm; background: #f7f8fc; }
-      .decision-val { font-weight: 700; }
-      .table-decision .sig-cell { font-size: 10px; line-height: 1.6; padding-bottom: 15mm; }
-      .grille-title { font-weight: 700; font-size: 12px; text-align: center; padding: 5px; border: 1px solid #000;
-                      background: #1a3a6b; color: white; margin-top: 10px; }
-      .table-grille th { background: #dde4f0; font-weight: 700; text-align: center; }
-      .table-grille td:first-child { font-weight: 700; font-style: italic; width: 18mm; text-align: center; }
-      .table-grille td:nth-child(2) { font-style: italic; }
-      .table-grille .check-cell { width: 20mm; text-align: center; font-size: 14px; }
+      /* ── Formulaire ── */
+      .saisie h2 { font-size: 1rem; line-height: 1.5rem; margin: 1.25rem 0 0.5rem; color: #000091; }
+      .saisie h2:first-child { margin-top: 0; }
+      .etat-sauvegarde { font-size: 0.75rem; font-weight: 400; color: #666; margin-left: 0.5rem; white-space: nowrap; }
+      .etat-sauvegarde.erreur { color: #ce0500; font-weight: 700; }
+      .dossier { display: grid; grid-template-columns: max-content 1fr; gap: 0.15rem 0.75rem; font-size: 0.8125rem; margin: 0; }
+      .dossier dt { color: #666; }
+      .dossier dt, .dossier dd { margin: 0; padding: 0; line-height: 1.45; }
+      .dossier dd { font-weight: 500; }
+      .ucare li { padding-bottom: 0; line-height: 1.45; }
+      .ucare { font-size: 0.75rem; margin: 0.5rem 0 0; padding-left: 1.1rem; }
+      .ligne-grille { border: 1px solid #e5e5e5; border-radius: 4px; padding: 0.5rem 0.75rem; margin-bottom: 0.5rem; }
+      .ligne-grille .titre { font-size: 0.8125rem; font-weight: 700; margin: 0 0 0.25rem; line-height: 1.3; }
+      .ligne-grille .titre span { font-weight: 400; font-style: italic; }
+      .ligne-grille .contenu { display: flex; align-items: flex-start; gap: 0.5rem 1.25rem; flex-wrap: wrap; }
+      .bascules { display: flex; gap: 1.25rem; }
+      .bascules .fr-toggle { padding: 0; }
+      .bascules .fr-toggle__label { white-space: nowrap; font-size: 0.875rem; }
+      .ligne-grille .fr-input { flex: 1 1 180px; margin-top: 0; font-size: 0.875rem; padding-top: 0.375rem; padding-bottom: 0.375rem; }
+      .champ-bloque { opacity: 0.55; cursor: not-allowed; }
+      .fr-label.petit { font-size: 0.875rem; }
+      .signature { font-size: 0.8125rem; color: #3a3a3a; margin: 0.75rem 0 0; }
+
+      /* ── Pied du widget : version ── */
+      #pied-widget { flex-shrink: 0; padding: 4px 16px; background: #fff; border-top: 1px solid #ddd;
+                     font-size: 11px; color: #666; display: flex; justify-content: space-between; gap: 1rem; }
     </style>
   </head>
   <body>
@@ -114,78 +121,39 @@
       </div>
     </div>
 
-    <!-- Page 1 : notification -->
-    <div class="page-wrapper">
-      <div class="document" id="document">
-        <div class="doc-header">
-          <div class="logo-cell"><img class="logo-ministere" alt="Logo Ministère" /></div>
-          <div class="header-text">
-            <strong>DRAAF Occitanie</strong><br />
-            Service Régional de la Formation et du Développement<br />
-            Unité FPCA-VAE
-          </div>
-        </div>
-
-        <div class="refs">
-          <em>Référence dossier Démarche Numérique :</em> <span class="val" id="r-ref-ds"></span><br />
-          <em>Date de dépôt du dossier complet :</em> <span class="val" id="r-date-depot"></span>
-        </div>
-
-        <div class="doc-title">Notification de décision d'actualisation d'habilitation UC</div>
-
-        <table class="table-infos">
-          <tr><td>Organisme de formation</td><td id="f-organisme"></td></tr>
-          <tr><td>Site de formation</td><td id="f-site"></td></tr>
-          <tr><td>Diplôme</td><td id="f-diplome"></td></tr>
-          <tr><td>Option / spécialité</td><td id="f-option"></td></tr>
-          <tr><td>Support(s)</td><td id="f-supports"></td></tr>
-          <tr><td>Date de début d'habilitation</td><td id="f-date-debut"></td></tr>
-          <tr><td>Date de fin d'habilitation</td><td id="f-date-fin"></td></tr>
-          <tr><td>Voie de formation (APP ou FPC)</td><td id="f-voie"></td></tr>
-          <tr><td>Durée de formation centre (h)</td><td id="f-duree-centre"></td></tr>
-          <tr><td>Durée de formation entreprise (h)</td><td id="f-duree-entreprise"></td></tr>
-          <tr><td>Cycle de formation</td><td id="f-cycle"></td></tr>
-        </table>
-
-        <div class="ucare-box">
-          <em style="font-weight: 700">Intitulé(s) UCARE(s) habilitée(s)</em>
-          <div id="ucare-list"></div>
-        </div>
-
-        <table class="table-decision">
-          <tr><td>Décision</td><td class="decision-val" id="f-decision"></td></tr>
-          <tr><td>Observations</td><td id="f-observations"></td></tr>
-          <tr>
-            <td>Date et signature</td>
-            <td class="sig-cell">
-              Le délégué académique, Chef du Service Régional de la Formation et du Développement<br />
-              <em>Paul CANDAELE</em><br />
-              <strong>le : <span id="f-date-signature"></span></strong>
-            </td>
-          </tr>
-        </table>
-      </div>
+    <!-- Section étroite : saisie et aperçu en onglets -->
+    <div class="onglets" role="tablist">
+      <button id="onglet-saisie" class="fr-btn fr-btn--sm" role="tab" aria-selected="true">Saisie</button>
+      <button id="onglet-apercu" class="fr-btn fr-btn--sm fr-btn--tertiary" role="tab" aria-selected="false">Aperçu PDF</button>
     </div>
 
-    <!-- Page 2 : grille d'analyse (lignes générées depuis GRILLE dans document.js) -->
-    <div class="page-wrapper">
-      <div class="document p2">
-        <div class="doc-header" style="margin-bottom: 10px">
-          <div class="logo-cell"><img class="logo-ministere" alt="Logo Ministère" /></div>
-          <div class="header-text">
-            <strong>DRAAF Occitanie</strong><br />
-            Service Régional de la Formation et du Développement<br />
-            Unité FPCA-VAE
-          </div>
+    <div class="corps vue-saisie" id="corps">
+      <!-- Formulaire : la grille est générée par app.js à partir de GRILLE (document.js) -->
+      <section class="saisie" aria-label="Saisie">
+        <h2>Dossier</h2>
+        <dl class="dossier" id="resume-dossier"></dl>
+        <ul class="ucare" id="resume-ucare"></ul>
+
+        <h2>Grille d'analyse<span class="etat-sauvegarde" id="etat-sauvegarde"></span></h2>
+        <div id="form-grille"></div>
+
+        <h2>Décision</h2>
+        <div class="fr-select-group">
+          <label class="fr-label petit" for="ch-decision">Décision</label>
+          <select class="fr-select" id="ch-decision"></select>
         </div>
-        <div class="grille-title">Grille d'analyse du dossier de demande d'actualisation UC</div>
-        <table class="table-grille">
-          <thead>
-            <tr><th></th><th>Pièces déposées</th><th class="check-cell">Pièces déposées</th><th class="check-cell">Conformité</th><th>Remarques</th></tr>
-          </thead>
-          <tbody id="grille-corps"></tbody>
-        </table>
-      </div>
+        <div class="fr-input-group">
+          <label class="fr-label petit" for="ch-observations">Observations</label>
+          <textarea class="fr-input" id="ch-observations" rows="3"></textarea>
+        </div>
+        <p class="signature">Date de signature : date du jour de génération du PDF (<span id="date-jour"></span>).</p>
+      </section>
+
+      <!-- Aperçu : le vrai PDF, régénéré après chaque modification -->
+      <section class="apercu" aria-label="Aperçu du PDF">
+        <iframe id="apercu-pdf" title="Aperçu du PDF" hidden></iframe>
+        <p id="apercu-vide">Aucun dossier à afficher</p>
+      </section>
     </div>
 
     <footer id="pied-widget">
@@ -193,6 +161,6 @@
       <span id="version"></span>
     </footer>
 
-    <script src="app.js?v=0.3.0"></script>
+    <script src="app.js?v=0.4.0"></script>
   </body>
 </html>

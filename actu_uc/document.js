@@ -38,7 +38,6 @@ globalThis.FPCA = globalThis.FPCA || {};
     // ── Décision ──
     decision: "decision",
     observations: "Observations",
-    date_signature: "Derniere_mise_a_jour",
 
     // ── Grille d'analyse — pièces déposées ──
     doc4: "doc4",
@@ -214,7 +213,8 @@ globalThis.FPCA = globalThis.FPCA || {};
 
   function decision(rec) {
     const libelle = (t) => ({ text: t.toUpperCase(), bold: true, fillColor: FOND_LIBELLE });
-    const dateSignature = formatDate(lire(rec, "date_signature")) || new Date().toLocaleDateString("fr-FR");
+    // Date de signature : toujours la date du jour de génération du PDF
+    const dateSignature = new Date().toLocaleDateString("fr-FR");
     return {
       table: {
         widths: [42 * PT, "*"],
@@ -288,5 +288,12 @@ globalThis.FPCA = globalThis.FPCA || {};
     };
   }
 
-  globalThis.FPCA.actuUC = { COLUMN_MAP, FILTRES, GRILLE, estDossierValide, lire, ucareLignes, nomFichier, construireDocument };
+  // Champs modifiables dans le widget (enregistrés dans Grist) : la grille, la décision et les observations
+  const EDITABLES = [
+    ...GRILLE.flatMap(([, , piece, conf, rem]) => [piece, conf, rem]),
+    "decision", "observations",
+  ];
+
+  globalThis.FPCA.actuUC = { COLUMN_MAP, FILTRES, GRILLE, EDITABLES, estDossierValide, lire, ucareLignes, nomFichier,
+                             construireDocument };
 })();

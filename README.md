@@ -4,7 +4,7 @@ Widgets personnalisés Grist qui génèrent les notifications officielles de l'u
 
 | Widget | URL à coller dans Grist (« Widget personnalisé » → « URL ») |
 |---|---|
-| Actualisation UC | `https://jlllyfish.github.io/grist-widget-UC-FPCA/actu_uc/?v=0.3.0` |
+| Actualisation UC | `https://jlllyfish.github.io/grist-widget-UC-FPCA/actu_uc/?v=0.4.0` |
 
 Accès du widget à régler sur **« Accès complet »**.
 
@@ -12,11 +12,11 @@ Accès du widget à régler sur **« Accès complet »**.
 
 ```
 actu_uc/
-  index.html   page du widget (aperçu A4) — porte le numéro de version
+  index.html   page du widget (formulaire + aperçu du PDF) — porte le numéro de version
   document.js  correspondance des colonnes Grist (COLUMN_MAP) et composition du PDF
-  app.js       liaison avec Grist, aperçu, téléchargements
+  app.js       navigation, filtres, saisie enregistrée dans Grist, aperçu PDF, téléchargements
 commun/
-  grist.js     lecture de toute la table liée (sans les filtres de la vue)
+  grist.js     lecture de toute la table liée (sans les filtres de la vue), métadonnées des colonnes, écriture
   pdf.js       socle pdfmake : polices, en-tête, pied de page, coche vectorielle, formats
   logo.js      logo du ministère (SVG), partagé par l'aperçu et le PDF
 vendor/        bibliothèques embarquées (voir vendor/README.md)
@@ -32,6 +32,7 @@ La version s'affiche en bas à droite du widget et dans la console du navigateur
 
 ## Historique
 
+- **0.4.0** — Saisie directe dans le widget, enregistrée automatiquement dans Grist : grille d'analyse (bascules « Pièce déposée » / « Conforme » et remarques), décision (choix de la colonne Grist) et observations. L'aperçu affiche désormais le vrai PDF, régénéré après chaque modification (copie HTML de la page A4 supprimée). Les colonnes formule, absentes ou de mauvais type sont signalées et non modifiables. Date de signature : date du jour. En section étroite, saisie et aperçu passent en onglets.
 - **0.3.0** — Barre de navigation au style DSFR (composants du Système de design de l'État, embarqués). Filtres croisés par département, organisme et diplôme : chaque menu n'affiche que les valeurs compatibles avec les autres filtres, avec le nombre de dossiers. Recherche et filtres mémorisés d'une ouverture à l'autre ; bouton « Réinitialiser ».
 - **0.2.0** — Navigation dans le widget : flèches ◀ ▶, liste déroulante, recherche (n°, organisme, site, diplôme, département). Le widget lit toute la table, sans subir les filtres de la vue. Option « Suivre Grist » pour synchroniser la sélection dans les deux sens. Le ZIP porte sur les dossiers affichés par la recherche.
 - **0.1.1** — Logo du ministère en SVG vectoriel (aperçu et PDF) : le PDF ne contient plus aucune image matricielle (≈ 75 Ko).
