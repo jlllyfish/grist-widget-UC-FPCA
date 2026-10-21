@@ -91,27 +91,77 @@
     [lire(rec, "dossier_number"), lire(rec, "organisme"), lire(rec, "site"), lire(rec, "diplome")]
       .map((v) => texte(v)).filter(Boolean).join(" — ") || `Ligne ${rec.id}`;
 
+  // ── Filtres croisés : chaque menu ne propose que les valeurs compatibles avec les autres filtres ──
+  const FACETTES = [
+    { champ: "departement", id: "filtre-departement", tous: "Tous départements" },
+    { champ: "organisme", id: "filtre-organisme", tous: "Tous organismes" },
+    { champ: "diplome", id: "filtre-diplome", tous: "Tous diplômes" },
+  ];
+  const VIDE = "\u2205";   // valeur des dossiers où le champ n'est pas renseigné
+  const cle = (rec, champ) => texte(lire(rec, champ)).trim() || VIDE;
+  const choix = (f) => $(f.id).value;
+
+  // Mémorise recherche et filtres : Grist recharge souvent le widget en changeant de page
+  const MEMO = "fpca-actu-uc:filtres";
+  function memoriser() {
+    const etat = { recherche: $("recherche").value };
+    FACETTES.forEach((f) => (etat[f.champ] = choix(f)));
+    try { localStorage.setItem(MEMO, JSON.stringify(etat)); } catch {}
+  }
+  let memoire = {};
+  try { memoire = JSON.parse(localStorage.getItem(MEMO)) || {}; } catch {}
+  $("recherche").value = memoire.recherche || "";
+
   // Tous les mots saisis doivent apparaître dans le n°, l'organisme, le site, le diplôme ou le département
   function correspond(rec, mots) {
+    if (!mots.length) return true;
     const cible = norm(["dossier_number", "organisme", "site", "diplome", "departement", "option"]
       .map((c) => texte(lire(rec, c))).join(" "));
     return mots.every((m) => cible.includes(m));
   }
+  const passe = (rec, sauf) => FACETTES.every((f) => f === sauf || !choix(f) || cle(rec, f.champ) === choix(f));
+
+  function majFacettes(mots) {
+    FACETTES.forEach((f) => {
+      const sel = $(f.id);
+      const voulu = sel.value || memoire[f.champ] || "";
+      const base = tous.filter((r) => correspond(r, mots) && passe(r, f));
+      const compte = new Map();
+      base.forEach((r) => { const k = cle(r, f.champ); compte.set(k, (compte.get(k) || 0) + 1); });
+      if (voulu && !compte.has(voulu)) compte.set(voulu, 0);
+      const valeurs = [...compte.keys()].sort((x, y) =>
+        x === VIDE ? 1 : y === VIDE ? -1 : x.localeCompare(y, "fr", { numeric: true, sensitivity: "base" }));
+      sel.innerHTML = "";
+      sel.add(new Option(f.tous, ""));
+      valeurs.forEach((v) => sel.add(new Option(`${v === VIDE ? "(non renseigné)" : v} (${compte.get(v)})`, v)));
+      sel.value = voulu;
+    });
+    memoire = {};   // appliquée une seule fois, au premier chargement
+  }
 
   function majListe() {
     const mots = norm($("recherche").value).split(/\s+/).filter(Boolean);
-    liste = mots.length ? tous.filter((r) => correspond(r, mots)) : tous;
-    $("sel-dossier").innerHTML = liste.length
-      ? liste.map((r, i) => `<option value="${i}"></option>`).join("")
-      : `<option value="">${tous.length ? "Aucun dossier ne correspond" : "Aucun dossier"}</option>`;
-    // textContent : pas d'injection HTML depuis les données
-    [...$("sel-dossier").options].forEach((o, i) => { if (liste[i]) o.textContent = libelle(liste[i]); });
+    majFacettes(mots);
+    liste = tous.filter((r) => correspond(r, mots) && passe(r, null));
+    const filtre = liste.length !== tous.length || mots.length || FACETTES.some(choix);
+    $("btn-reinit").hidden = !filtre;
+    $("nb-resultats").textContent = tous.length ? `${liste.length} dossier${liste.length > 1 ? "s" : ""} sur ${tous.length}` : "";
+    $("sel-dossier").innerHTML = "";
+    if (liste.length) liste.forEach((r, i) => $("sel-dossier").add(new Option(libelle(r), String(i))));
+    else $("sel-dossier").add(new Option(tous.length ? "Aucun dossier ne correspond" : "Aucun dossier", ""));
     // Garde le dossier affiché s'il est toujours dans la liste, sinon prend le premier
     const i = courant ? liste.findIndex((r) => r.id === courant.id) : -1;
     if (i >= 0) courant = liste[i];
-    else courant = liste[0] || (mots.length ? courant : null);
+    else courant = liste[0] || (filtre ? courant : null);
     majNav();
     renderDocument();
+    memoriser();
+  }
+
+  function reinitialiser() {
+    $("recherche").value = "";
+    FACETTES.forEach((f) => ($(f.id).value = ""));
+    majListe();
   }
 
   function majNav() {
@@ -125,7 +175,7 @@
     $("btn-all").disabled = !n;
     $("btn-all").textContent = n ? `ZIP (${n})` : "ZIP";
     $("btn-all").title = n === tous.length ? "Tous les dossiers dans une archive"
-      : "Les dossiers correspondant à la recherche dans une archive";
+      : "Les dossiers retenus par la recherche et les filtres, dans une archive";
   }
 
   function aller(i, { sync = true } = {}) {
@@ -143,6 +193,8 @@
   $("btn-suiv").addEventListener("click", () => aller(indexCourant() + 1));
   $("sel-dossier").addEventListener("change", (e) => aller(Number(e.target.value)));
   $("recherche").addEventListener("input", majListe);
+  FACETTES.forEach((f) => $(f.id).addEventListener("change", majListe));
+  $("btn-reinit").addEventListener("click", reinitialiser);
   $("recherche").addEventListener("keydown", (e) => {
     if (e.key === "Enter" && liste.length) aller(0);
   });
@@ -181,8 +233,7 @@
     // Recherche par id dans la liste du widget : les valeurs de la vue sont décodées différemment
     let i = liste.findIndex((r) => r.id === record.id);
     if (i < 0 && tous.some((r) => r.id === record.id)) {
-      $("recherche").value = "";   // dossier masqué par la recherche : on l'efface
-      majListe();
+      reinitialiser();   // dossier masqué par la recherche ou les filtres : on les efface
       i = liste.findIndex((r) => r.id === record.id);
     }
     if (i >= 0) {

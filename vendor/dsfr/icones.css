@@ -1,0 +1,6 @@
+/* Icônes DSFR utilisées par les widgets, absentes de dsfr.min.css (extraites de utility/icons/icons-system). */
+.fr-icon-arrow-left-s-line:after,.fr-icon-arrow-left-s-line:before{-webkit-mask-image:url(icons/system/arrow-left-s-line.svg);mask-image:url(icons/system/arrow-left-s-line.svg)}
+.fr-icon-arrow-right-s-line:after,.fr-icon-arrow-right-s-line:before{-webkit-mask-image:url(icons/system/arrow-right-s-line.svg);mask-image:url(icons/system/arrow-right-s-line.svg)}
+.fr-icon-search-line:after,.fr-icon-search-line:before{-webkit-mask-image:url(icons/system/search-line.svg);mask-image:url(icons/system/search-line.svg)}
+.fr-icon-download-line:after,.fr-icon-download-line:before{-webkit-mask-image:url(icons/system/download-line.svg);mask-image:url(icons/system/download-line.svg)}
+.fr-icon-close-circle-line:after,.fr-icon-close-circle-line:before{-webkit-mask-image:url(icons/system/close-circle-line.svg);mask-image:url(icons/system/close-circle-line.svg)}

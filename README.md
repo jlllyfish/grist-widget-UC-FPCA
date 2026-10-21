@@ -4,7 +4,7 @@ Widgets personnalisés Grist qui génèrent les notifications officielles de l'u
 
 | Widget | URL à coller dans Grist (« Widget personnalisé » → « URL ») |
 |---|---|
-| Actualisation UC | `https://jlllyfish.github.io/grist-widget-UC-FPCA/actu_uc/?v=0.2.0` |
+| Actualisation UC | `https://jlllyfish.github.io/grist-widget-UC-FPCA/actu_uc/?v=0.3.0` |
 
 Accès du widget à régler sur **« Accès complet »**.
 
@@ -32,6 +32,7 @@ La version s'affiche en bas à droite du widget et dans la console du navigateur
 
 ## Historique
 
+- **0.3.0** — Barre de navigation au style DSFR (composants du Système de design de l'État, embarqués). Filtres croisés par département, organisme et diplôme : chaque menu n'affiche que les valeurs compatibles avec les autres filtres, avec le nombre de dossiers. Recherche et filtres mémorisés d'une ouverture à l'autre ; bouton « Réinitialiser ».
 - **0.2.0** — Navigation dans le widget : flèches ◀ ▶, liste déroulante, recherche (n°, organisme, site, diplôme, département). Le widget lit toute la table, sans subir les filtres de la vue. Option « Suivre Grist » pour synchroniser la sélection dans les deux sens. Le ZIP porte sur les dossiers affichés par la recherche.
 - **0.1.1** — Logo du ministère en SVG vectoriel (aperçu et PDF) : le PDF ne contient plus aucune image matricielle (≈ 75 Ko).
 - **0.1.0** — PDF vectoriel (pdfmake) à la place de html2canvas + jsPDF ; lot téléchargé en un seul ZIP ; bibliothèques hébergées dans le dépôt ; correction de la sélection d'une ligne hors périmètre ou filtrée (le widget n'affiche plus silencieusement un autre dossier).

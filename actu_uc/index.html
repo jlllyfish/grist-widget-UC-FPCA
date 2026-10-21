@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <!-- Version du widget : la changer ICI et dans tous les ?v= de cette page à chaque publication -->
-    <meta name="fpca-version" content="0.2.0" />
+    <meta name="fpca-version" content="0.3.0" />
     <!-- Politique de sécurité du contenu : seul le code de ce dépôt et l'API Grist sont autorisés.
          'unsafe-eval' est imposé par grist-plugin-api.js (paquet webpack qui exécute ses modules via eval). -->
     <meta
@@ -14,41 +14,37 @@
     <title>Actualisation UC</title>
     <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
     <!-- Bibliothèques embarquées (versions figées, voir vendor/README.md) -->
-    <script src="../vendor/pdfmake.min.js?v=0.2.0"></script>
-    <script src="../vendor/jszip.min.js?v=0.2.0"></script>
-    <script src="../vendor/marianne.js?v=0.2.0"></script>
+    <script src="../vendor/pdfmake.min.js?v=0.3.0"></script>
+    <script src="../vendor/jszip.min.js?v=0.3.0"></script>
+    <script src="../vendor/marianne.js?v=0.3.0"></script>
     <!-- Socle commun aux widgets FPCA -->
-    <script src="../commun/logo.js?v=0.2.0"></script>
-    <script src="../commun/pdf.js?v=0.2.0"></script>
-    <script src="../commun/grist.js?v=0.2.0"></script>
+    <script src="../commun/logo.js?v=0.3.0"></script>
+    <script src="../commun/pdf.js?v=0.3.0"></script>
+    <script src="../commun/grist.js?v=0.3.0"></script>
     <!-- Widget -->
-    <script src="document.js?v=0.2.0"></script>
+    <script src="document.js?v=0.3.0"></script>
+    <link rel="stylesheet" href="../vendor/dsfr/dsfr.min.css?v=0.3.0" />
+    <link rel="stylesheet" href="../vendor/dsfr/icones.css?v=0.3.0" />
     <style>
-      @font-face { font-family: "Marianne"; font-weight: 400; src: url("../vendor/fonts/Marianne-Regular.woff2") format("woff2"); }
-      @font-face { font-family: "Marianne"; font-weight: 400; font-style: italic; src: url("../vendor/fonts/Marianne-Regular_Italic.woff2") format("woff2"); }
-      @font-face { font-family: "Marianne"; font-weight: 700; src: url("../vendor/fonts/Marianne-Bold.woff2") format("woff2"); }
-      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-      body { font-family: "Marianne", "Segoe UI", Arial, sans-serif; font-size: 13px; background: #e8eaf0; color: #111; padding-bottom: 32px; }
+      body { background: #e8eaf0; color: #111; padding-bottom: 36px; }
+      [hidden] { display: none !important; }
 
-      /* ── Barre d'outils ── */
-      #toolbar { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #fff;
-                 border-bottom: 2px solid #000091; position: sticky; top: 0; z-index: 200; flex-wrap: wrap; }
-      #toolbar-title { color: #1e1e1e; font-size: 14px; font-weight: 700; }
-      #nav { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; flex-wrap: wrap; }
-      #nav input[type="search"], #nav select { border: 1px solid #ccc; border-radius: 4px; padding: 6px 8px; font: inherit;
-                                               font-size: 12px; background: #fff; color: #161616; }
-      #recherche { width: 200px; }
-      #sel-dossier { width: 320px; max-width: 100%; }
-      #btn-prec, #btn-suiv { background: #334d6e; padding: 5px 11px; font-size: 16px; line-height: 1; }
-      #btn-prec:hover:not(:disabled), #btn-suiv:hover:not(:disabled) { background: #4a6fa5; }
-      .lier { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #3a3a3a; white-space: nowrap; }
-      #nav-counter { color: #3a3a3a; font-size: 12px; font-weight: 600; min-width: 52px; text-align: center; }
-      #status { font-size: 11px; color: #666; font-family: monospace; max-width: 320px;
-                white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      button { padding: 8px 16px; border: none; border-radius: 4px; font: inherit; font-size: 13px; font-weight: 600;
-               cursor: pointer; white-space: nowrap; background: #000091; color: #fff; transition: background 0.15s; }
-      button:hover:not(:disabled) { background: #1212ff; }
-      button:disabled { background: #929292; cursor: not-allowed; }
+      /* ── Barres du haut (composants DSFR) ── */
+      .barres { position: sticky; top: 0; z-index: 200; background: #fff; border-bottom: 2px solid #000091; }
+      .barre { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 1rem; flex-wrap: wrap; }
+      .barre + .barre { border-top: 1px solid #e5e5e5; }
+      .barre .fr-select, .barre .fr-input { margin-top: 0; }
+      #toolbar-title { font-weight: 700; font-size: 1rem; margin: 0; white-space: nowrap; }
+      .nav { display: flex; align-items: center; gap: 0.25rem; flex: 1 1 360px; min-width: 0; }
+      #sel-dossier { flex: 1; min-width: 0; }
+      #nav-counter { font-size: 0.875rem; font-weight: 700; color: #3a3a3a; min-width: 3.5rem; text-align: center; }
+      .barre .fr-checkbox-group { margin: 0; }
+      .actions { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
+      #status { font-size: 0.75rem; color: #666; max-width: 360px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .filtre { flex: 1 1 170px; min-width: 150px; }
+      .barre .fr-select, .barre .fr-input { font-size: 0.875rem; padding-top: 0.375rem; padding-bottom: 0.375rem; }
+      .filtre-recherche { flex: 2 1 220px; }
+      #nb-resultats { font-size: 0.875rem; color: #3a3a3a; white-space: nowrap; }
 
       /* ── Pied du widget : version ── */
       #pied-widget { position: fixed; left: 0; right: 0; bottom: 0; z-index: 200; padding: 6px 16px; background: #fff;
@@ -56,6 +52,8 @@
 
       /* ── Aperçu A4 ── */
       .page-wrapper { padding: 20px; display: flex; justify-content: center; }
+      .document { font-size: 11px; line-height: 1.4; color: #111; }
+      .document p, .document em { font-size: inherit; }
       .document { background: white; width: 210mm; min-height: 297mm; padding: 15mm; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18); }
       .document.p2 { min-height: 80mm; }
       .doc-header { display: flex; align-items: flex-start; margin-bottom: 6px; }
@@ -84,21 +82,36 @@
     </style>
   </head>
   <body>
-    <div id="toolbar">
-      <span id="toolbar-title">Actualisation UC</span>
-      <div id="nav">
-        <input id="recherche" type="search" placeholder="Rechercher…" title="N° de dossier, organisme, site, diplôme ou département" aria-label="Rechercher un dossier" />
-        <button id="btn-prec" title="Dossier précédent" disabled>◀</button>
-        <select id="sel-dossier" aria-label="Dossier affiché"></select>
-        <button id="btn-suiv" title="Dossier suivant" disabled>▶</button>
-        <span id="nav-counter">— / —</span>
-        <label class="lier" title="Le widget suit la ligne sélectionnée dans Grist, et inversement">
-          <input id="lier-grist" type="checkbox" checked /> Suivre Grist
-        </label>
+    <div class="barres">
+      <div class="barre">
+        <p id="toolbar-title">Actualisation UC</p>
+        <div class="nav">
+          <button id="btn-prec" class="fr-btn fr-btn--tertiary fr-btn--sm fr-icon-arrow-left-s-line" title="Dossier précédent" disabled>Dossier précédent</button>
+          <select id="sel-dossier" class="fr-select" aria-label="Dossier affiché"></select>
+          <button id="btn-suiv" class="fr-btn fr-btn--tertiary fr-btn--sm fr-icon-arrow-right-s-line" title="Dossier suivant" disabled>Dossier suivant</button>
+          <span id="nav-counter">— / —</span>
+        </div>
+        <div class="fr-checkbox-group fr-checkbox-group--sm" title="Le widget suit la ligne sélectionnée dans Grist, et inversement">
+          <input id="lier-grist" type="checkbox" checked />
+          <label class="fr-label" for="lier-grist">Suivre Grist</label>
+        </div>
+        <div class="actions">
+          <span id="status">En attente de Grist…</span>
+          <button id="btn-pdf" class="fr-btn fr-btn--sm fr-icon-download-line fr-btn--icon-left" disabled>PDF</button>
+          <button id="btn-all" class="fr-btn fr-btn--sm fr-btn--secondary fr-icon-download-line fr-btn--icon-left" disabled>ZIP</button>
+        </div>
       </div>
-      <div id="status">En attente de Grist…</div>
-      <button id="btn-pdf" disabled>PDF</button>
-      <button id="btn-all" disabled>ZIP</button>
+      <div class="barre" role="search">
+        <div class="filtre filtre-recherche fr-input-wrap fr-icon-search-line">
+          <input id="recherche" class="fr-input" type="search" placeholder="Rechercher un dossier"
+                 title="N° de dossier, organisme, site, diplôme ou département" aria-label="Rechercher un dossier" />
+        </div>
+        <select id="filtre-departement" class="filtre fr-select" aria-label="Filtrer par département"></select>
+        <select id="filtre-organisme" class="filtre fr-select" aria-label="Filtrer par organisme"></select>
+        <select id="filtre-diplome" class="filtre fr-select" aria-label="Filtrer par diplôme"></select>
+        <span id="nb-resultats"></span>
+        <button id="btn-reinit" class="fr-btn fr-btn--sm fr-btn--tertiary-no-outline fr-icon-close-circle-line fr-btn--icon-left" hidden>Réinitialiser</button>
+      </div>
     </div>
 
     <!-- Page 1 : notification -->
@@ -180,6 +193,6 @@
       <span id="version"></span>
     </footer>
 
-    <script src="app.js?v=0.2.0"></script>
+    <script src="app.js?v=0.3.0"></script>
   </body>
 </html>
