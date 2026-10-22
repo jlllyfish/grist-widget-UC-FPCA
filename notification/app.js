@@ -322,8 +322,8 @@
   const sep = $("separateur");
   function largeur(pct, memoriser = true) {
     const corps = $("corps").getBoundingClientRect().width || 1;
-    const min = (280 / corps) * 100;                                   // 280 px minimum de chaque côté
-    const v = Math.min(100 - min, Math.max(min, pct));
+    // 260 px minimum pour le formulaire, 240 px pour l'aperçu (+ 8 px de séparateur)
+    const v = Math.min(100 - (248 / corps) * 100, Math.max((260 / corps) * 100, pct));
     $("corps").style.setProperty("--largeur-saisie", `${v.toFixed(1)}%`);
     sep.setAttribute("aria-valuenow", String(Math.round(v)));
     if (memoriser) try { localStorage.setItem(MEMO_LARGEUR, String(v)); } catch {}
