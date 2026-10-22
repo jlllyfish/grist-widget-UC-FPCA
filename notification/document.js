@@ -63,8 +63,8 @@ globalThis.FPCA = globalThis.FPCA || {};
   }
 
   // Encadré UCARE / modules : 1, 2 ou 3 colonnes (3 par défaut) remplies ligne par ligne
-  function liste(rec, profil, colonnes = 3) {
-    const nb = [1, 2, 3].includes(colonnes) ? colonnes : 3;
+  function liste(rec, profil, colonnes) {
+    const nb = [1, 2, 3].includes(colonnes) ? colonnes : profil.liste.colonnesParDefaut || 3;
     const items = listeLignes(rec, profil).map((l) => ({ text: `• ${l}`, fontSize: 9.5 * PX }));
     const rangees = [];
     for (let i = 0; i < items.length; i += nb) {

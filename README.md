@@ -4,7 +4,7 @@ Widgets personnalisés Grist qui génèrent les notifications officielles de l'u
 
 | Widget | URL à coller dans Grist (« Widget personnalisé » → « URL ») |
 |---|---|
-| Tous types (UC + CCF) | `https://jlllyfish.github.io/grist-widget-UC-FPCA/notification/?v=0.5.3` |
+| Tous types (UC + CCF) | `https://jlllyfish.github.io/grist-widget-UC-FPCA/notification/?v=0.5.4` |
 | Actualisation UC seule | `https://jlllyfish.github.io/grist-widget-UC-FPCA/notification/?profil=uc&v=0.5.0` |
 | Actualisation CCF seule | `https://jlllyfish.github.io/grist-widget-UC-FPCA/notification/?profil=ccf&v=0.5.0` |
 
@@ -42,6 +42,7 @@ La version s'affiche en bas à droite du widget et dans la console du navigateur
 
 ## Historique
 
+- **0.5.4** — Liste des modules CCF sur 1 colonne par défaut (UCARE UC : 3 colonnes par défaut). Défaut réglable par profil (`colonnesParDefaut`).
 - **0.5.3** — Choix de 1, 2 ou 3 colonnes (3 par défaut) pour la liste UCARE / modules dans le PDF, dossier par dossier. Enregistré dans la colonne Grist facultative `Colonnes_liste` (Numérique) si elle existe, sinon dans le navigateur.
 - **0.5.2** — Filtre « Toutes notifications / À traiter / Complétées » (complétée = décision renseignée), ✓ devant les dossiers complétés dans la liste, badge d'état dans le formulaire. Un dossier qui sort des filtres après une saisie reste affiché jusqu'au changement de dossier.
 - **0.5.1** — Formulaire et aperçu à 50 / 50 par défaut, séparateur déplaçable à la souris (ou aux flèches du clavier), largeur mémorisée ; double-clic pour revenir à 50 / 50.

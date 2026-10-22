@@ -146,7 +146,8 @@
     });
   }
 
-  // ── Nombre de colonnes de la liste UCARE / modules dans le PDF (1, 2 ou 3 ; 3 par défaut) ──
+  // ── Nombre de colonnes de la liste UCARE / modules dans le PDF (1, 2 ou 3) ──
+  // Par défaut : celui du profil (UC : 3, CCF : 1).
   // Enregistré dans la colonne Grist « Colonnes_liste » si elle existe (choix partagé par l'équipe),
   // sinon dans ce navigateur, dossier par dossier.
   const MEMO_COLONNES = "fpca-notif:colonnes-liste";
@@ -158,13 +159,14 @@
   };
   function colonnesDe(rec) {
     const v = Number(colonneGrist() ? lire(rec, "colonnes_liste") : colonnesLocales[rec?.id]);
-    return [1, 2, 3].includes(v) ? v : 3;
+    return [1, 2, 3].includes(v) ? v : profil(rec)?.liste.colonnesParDefaut || 3;
   }
   function choisirColonnes(n) {
     if (!courant) return;
     if (colonneGrist()) modifier("colonnes_liste", n, true);
     else {
-      if (n === 3) delete colonnesLocales[courant.id]; else colonnesLocales[courant.id] = n;
+      if (n === profil(courant)?.liste.colonnesParDefaut) delete colonnesLocales[courant.id];
+      else colonnesLocales[courant.id] = n;
       try { localStorage.setItem(MEMO_COLONNES, JSON.stringify(colonnesLocales)); } catch {}
       pageApercu = 1;
       planifierApercu(0);

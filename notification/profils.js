@@ -112,7 +112,8 @@ globalThis.FPCA = globalThis.FPCA || {};
       titre: "Notification de décision d'actualisation d'habilitation UC",
       titreGrille: "Grille d'analyse du dossier de demande d'actualisation UC",
       pied: "Notification d'actualisation d'habilitation UC",
-      liste: { champ: "ucare_intitules", libelle: "Intitulé(s) UCARE(s) habilitée(s)", format: formatUcare, editable: false },
+      liste: { champ: "ucare_intitules", libelle: "Intitulé(s) UCARE(s) habilitée(s)", format: formatUcare, editable: false,
+               colonnesParDefaut: 3 },
       suffixeFichier: "actu",
       grille: [
         ligne("Doc.4", "Liste des UCARE (avec dossier de nouvelle(s) UCARE soumises à l'habilitation)", "doc4", "conf_doc4", "rem_doc4"),
@@ -133,7 +134,8 @@ globalThis.FPCA = globalThis.FPCA || {};
       titre: "Notification de décision d'actualisation d'habilitation CCF",
       titreGrille: "Grille d'analyse du dossier de demande d'actualisation CCF",
       pied: "Notification d'actualisation d'habilitation CCF",
-      liste: { champ: "modules_ccf", libelle: "Intitulé(s) module(s) habilité(s)", format: (l) => l, editable: true },
+      liste: { champ: "modules_ccf", libelle: "Intitulé(s) module(s) habilité(s)", format: (l) => l, editable: true,
+               colonnesParDefaut: 1 },
       suffixeFichier: "actu-CCF",
       grille: [
         ligne("Doc.5", "Tableau relatif au taux de qualification des horaires formateurs", "doc5", "conf_doc5", "rem_doc5"),
