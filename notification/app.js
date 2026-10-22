@@ -146,6 +146,33 @@
     });
   }
 
+  // ── Nombre de colonnes de la liste UCARE / modules dans le PDF (1, 2 ou 3 ; 3 par défaut) ──
+  // Enregistré dans la colonne Grist « Colonnes_liste » si elle existe (choix partagé par l'équipe),
+  // sinon dans ce navigateur, dossier par dossier.
+  const MEMO_COLONNES = "fpca-notif:colonnes-liste";
+  let colonnesLocales = {};
+  try { colonnesLocales = JSON.parse(localStorage.getItem(MEMO_COLONNES)) || {}; } catch {}
+  const colonneGrist = () => {
+    const m = META?.get(COLUMN_MAP.colonnes_liste);
+    return m && !m.formule && source === "table";
+  };
+  function colonnesDe(rec) {
+    const v = Number(colonneGrist() ? lire(rec, "colonnes_liste") : colonnesLocales[rec?.id]);
+    return [1, 2, 3].includes(v) ? v : 3;
+  }
+  function choisirColonnes(n) {
+    if (!courant) return;
+    if (colonneGrist()) modifier("colonnes_liste", n, true);
+    else {
+      if (n === 3) delete colonnesLocales[courant.id]; else colonnesLocales[courant.id] = n;
+      try { localStorage.setItem(MEMO_COLONNES, JSON.stringify(colonnesLocales)); } catch {}
+      pageApercu = 1;
+      planifierApercu(0);
+    }
+  }
+  document.querySelectorAll('input[name="colonnes-liste"]').forEach((r) =>
+    r.addEventListener("change", () => choisirColonnes(Number(r.value))));
+
   function remplirResume() {
     const dl = $("resume-dossier");
     dl.innerHTML = "";
@@ -167,6 +194,10 @@
      ["Cycle", t("cycle")]].forEach(([libelle, valeur]) => {
       dl.append(el("dt", { textContent: libelle }), el("dd", { textContent: valeur || "—" }));
     });
+    const n = colonnesDe(courant);
+    document.querySelectorAll('input[name="colonnes-liste"]').forEach((r) => (r.checked = Number(r.value) === n));
+    $("choix-colonnes").hidden = !p;
+    $("choix-colonnes").title = colonneGrist() ? "Enregistré dans Grist (colonne Colonnes_liste)" : "Mémorisé dans ce navigateur";
     // Liste non modifiable (UC : UCARE issues d'une formule) affichée dans le résumé
     if (p && !p.liste.editable) {
       const lignes = listeLignes(courant, p);
@@ -255,10 +286,10 @@
       signatureApercu = "";
       return;
     }
-    const signature = JSON.stringify(courant);
+    const signature = JSON.stringify([courant, colonnesDe(courant)]);
     if (signature === signatureApercu && !iframe.hidden) return;
     try {
-      const blob = await versBlob(construireDocument(courant, p));
+      const blob = await versBlob(construireDocument(courant, p, { colonnes: colonnesDe(courant) }));
       if (jeton !== jetonApercu) return;   // une génération plus récente est en cours
       const ancien = urlApercu;
       urlApercu = URL.createObjectURL(blob);
@@ -569,7 +600,7 @@
     try {
       await enregistrer();
       setStatus("⏳ Génération du PDF…");
-      telecharger(await versBlob(construireDocument(courant, p)), nomFichier(courant, p));
+      telecharger(await versBlob(construireDocument(courant, p, { colonnes: colonnesDe(courant) })), nomFichier(courant, p));
       setStatus("PDF téléchargé");
     } catch (err) {
       console.error(err);
@@ -595,7 +626,7 @@
         const k = (vus.get(nom) || 0) + 1;
         vus.set(nom, k);
         if (k > 1) nom = nom.replace(/\.pdf$/, `-${k}.pdf`);
-        zip.file(nom, await versBlob(construireDocument(rec, p)));
+        zip.file(nom, await versBlob(construireDocument(rec, p, { colonnes: colonnesDe(rec) })));
       }
       setStatus("⏳ Compression de l'archive…");
       const date = new Date().toISOString().slice(0, 10);

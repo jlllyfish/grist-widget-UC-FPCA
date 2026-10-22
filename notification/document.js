@@ -62,19 +62,20 @@ globalThis.FPCA = globalThis.FPCA || {};
     };
   }
 
-  // Encadré UCARE / modules : 3 colonnes remplies ligne par ligne
-  function liste(rec, profil) {
+  // Encadré UCARE / modules : 1, 2 ou 3 colonnes (3 par défaut) remplies ligne par ligne
+  function liste(rec, profil, colonnes = 3) {
+    const nb = [1, 2, 3].includes(colonnes) ? colonnes : 3;
     const items = listeLignes(rec, profil).map((l) => ({ text: `• ${l}`, fontSize: 9.5 * PX }));
     const rangees = [];
-    for (let i = 0; i < items.length; i += 3) {
-      const r = items.slice(i, i + 3);
-      while (r.length < 3) r.push({ text: "" });
+    for (let i = 0; i < items.length; i += nb) {
+      const r = items.slice(i, i + nb);
+      while (r.length < nb) r.push({ text: "" });
       rangees.push(r);
     }
     const contenu = [{ text: profil.liste.libelle, italics: true, bold: true }];
     if (rangees.length) {
       contenu.push({
-        table: { widths: ["*", "*", "*"], body: rangees },
+        table: { widths: Array(nb).fill("*"), body: rangees },
         layout: { hLineWidth: () => 0, vLineWidth: () => 0, paddingLeft: () => 0, paddingRight: () => 8 * PX,
                   paddingTop: () => 1, paddingBottom: () => 1 },
         margin: [0, 4 * PX, 0, 0],
@@ -136,7 +137,8 @@ globalThis.FPCA = globalThis.FPCA || {};
     ];
   }
 
-  function construireDocument(rec, profil) {
+  // options.colonnes : nombre de colonnes de la liste UCARE / modules (1 à 3)
+  function construireDocument(rec, profil, options = {}) {
     return {
       pageSize: "A4",
       pageOrientation: "portrait",
@@ -149,7 +151,7 @@ globalThis.FPCA = globalThis.FPCA || {};
         references(rec),
         titre(profil.titre),
         informations(rec),
-        liste(rec, profil),
+        liste(rec, profil, options.colonnes),
         decision(rec),
         // Page 2 — grille d'analyse
         { ...enTete(ENTETE), pageBreak: "before", margin: [0, 0, 0, 10 * PX] },

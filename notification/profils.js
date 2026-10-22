@@ -38,6 +38,7 @@ globalThis.FPCA = globalThis.FPCA || {};
     // ── Listes habilitées ──
     ucare_intitules: "Ref_UCARE",              // UC : texte multiligne issu de lookupRecords
     modules_ccf: "Intitules_modules_CCF",      // CCF : un module par ligne
+    colonnes_liste: "Colonnes_liste",          // facultatif (Numérique) : nb de colonnes de la liste dans le PDF, partagé par l'équipe
 
     // ── Décision ──
     decision: "decision",
